@@ -43,10 +43,10 @@
     do
     (format t "~%Chargement de ")
     (print (car asm))
-    ;;On met (car asm) dans le registre R0
+    ;;On met l'instruction assembleur courante dans R0
     (exec-move vm (car asm) :R0)
-    ;;On stocke la valeur du registre R0 à l'adresse mémoire du LOAD COUNTER courant
-    ;;Ce qui équivaut a dire on charge le code en mémoire
+    ;;On stocke l'instruction à l'adresse mémoire du LOAD COUNTER courant
+    ;;Ce qui équivaut à dire on charge le code en mémoire
     (exec-store vm :R0 (get vm :LC))
     ;;Si le bout de code courant est un label
     (if (eq (car (get vm :R0)) 'LABEL)
@@ -55,10 +55,11 @@
     ;;Sinon si on croise un JUMP quelconque TODO, idem pour les inconnus
     (if (eq (car (get vm :R0)) 'JUMP)
       (setf (gethash (second (get vm :R0)) (get vm :unknownLabels)) (get vm :LC))))
-    ;;Dans tous les cas on incrément load counter et on passe a l'instruction assembleur suivante
+    ;;Dans tous les cas on incrémente Load counter et on passe a l'instruction assembleur suivante
     (incr-reg vm :LC)
     (setf asm (cdr asm))
   )
+  ;;Résolution des étiquettes
   (resolve-jumps vm)
   (exec-move vm '(HALT) :R0)
   (exec-store vm :R0 (get vm :LC))  
