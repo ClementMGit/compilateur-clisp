@@ -19,8 +19,8 @@
   (setf(get vm :FP) 0)
   ;;Drapeaux Equal, plus grand, plus petit -> pour les cmp
   (setf(get vm :EQ) 0)
-  (setf(get vm :PG) 0)
-  (setf(get vm :PP) 0)
+  (setf(get vm :GT) 0)
+  (setf(get vm :LT) 0)
   ;;Max stack, fin de la pile, vers 75% de la taille de la mémoire
   (setf(get vm :maxStack) (floor (* size 0.75)))
   ;;Start Code, début de la zone de code juste après la fin de la pile
@@ -51,12 +51,12 @@
     ;;Si le bout de code courant est un label
     (if (eq (car (get vm :R0)) 'LABEL)
     ;;On ajoute le label et son adresse+1 à la liste des labels connus
-    (setf (gethash (second (get vm :R0)) (get vm :knownLabels)) (+ 1 (get vm :LC)))
-    ;;Sinon si on croise un JUMP quelconque TODO, idem pour les inconnus
-    (if (eq (car (get vm :R0)) 'JUMP)
+    (setf (gethash (second (get vm :R0)) (get vm :knownLabels)) (get vm :LC))
+    ;;Sinon si on croise un JMP, JSR etc quelconque, idem pour les inconnus
+    (if (char= (char (symbol-name (car (get vm :R0))) 0) #\J)
       (setf (gethash (second (get vm :R0)) (get vm :unknownLabels)) (get vm :LC))))
     ;;Dans tous les cas on incrémente Load counter et on passe a l'instruction assembleur suivante
-    (incr-reg vm :LC)
+    (exec-incr vm :LC)
     (setf asm (cdr asm))
   )
   ;;Résolution des étiquettes
@@ -72,8 +72,8 @@
     (lambda (label indexDuJump)
       (let ((known-address (gethash label (get vm :knownLabels))))
         (if known-address
-            ;; Si le label est connu, remplacer par JUMP <adresse>
-            (set-to-vm-mem vm indexDuJump (list `JUMP known-address))
+            ;; Si le label est connu, remplacer par <adresse> dans le JMP/JSR/etc 
+            (set-to-vm-mem vm indexDuJump (list (first (get-from-vm-mem vm indexdujump)) known-address))
             ;; Si le label est inconnu, remplacer par FUNCALL <label>
             (set-to-vm-mem vm indexDuJump (list `FUNCALL label)))))
     (get vm :unknownLabels)
@@ -83,13 +83,31 @@
   "Exécute l'instruction passée en paramètre"
   (format t "~%Exécution de ~S" instr)
   (format t "~%PC : ~D" (get vm :PC))
-  (case (first instr)
-    ('MOVE (exec-move vm (second instr) (third instr)))
-    ('ADD (exec-add vm (second instr) (third instr)))
-    ('SUB (exec-sub vm (second instr) (third instr)))
-    ('MUL (exec-mul vm (second instr) (third instr)))
-    ('DIV (exec-div vm (second instr) (third instr)))
-    ('HALT (setf(get vm :RUNNING) nil))
+  (let ((arg1 (second instr)) 
+       (arg2 (third instr)))
+    (case (first instr)
+      ('MOVE (exec-move vm arg1 arg2))
+      ('STORE (exec-store vm arg1 arg2))
+      ('LOAD (exec-load vm arg1 arg2))
+      ('PUSH (exec-push vm arg1))
+      ('POP (exec-pop vm arg1))
+      ('INCR (exec-incr vm arg1))
+      ('DECR (exec-decr vm arg1))
+      ('ADD (exec-add vm arg1 arg2))
+      ('SUB (exec-sub vm arg1 arg2))
+      ('MUL (exec-mul vm arg1 arg2))
+      ('DIV (exec-div vm arg1 arg2))
+      ('RTN (exec-rtn vm))
+      ('CMP (exec-cmp vm arg1 arg2))
+      ('JMP (exec-jmp vm arg1))
+      ('JSR (exec-jsr vm arg1))
+      ('JLT (exec-jlt vm arg1))
+      ('JLE (exec-jle vm arg1))
+      ('JGT (exec-jgt vm arg1))
+      ('JGE (exec-jge vm arg1))
+      ('NOP ())
+      ('HALT (setf(get vm :RUNNING) nil))
+    )
   )
 )
 (defun vm-exec (&optional (vm 'vm))
@@ -101,7 +119,8 @@
     (let ((instr (get-from-vm-mem vm (get vm :PC)))) 
     ;;On exécute l'instruction courante
     (exec-instr vm instr)
-    (incr-reg vm :PC);;On incrémente le PC
+    ;;On incrémente le PC
+    (exec-incr vm :PC)
     )
   )
 )
