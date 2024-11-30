@@ -4,44 +4,41 @@
 
 (defun make-vm (&optional (vm 'vm) (size 1000))
 ;; On affecte a chaque propriéte/registre un nom et une valeur
-  (set-vm-property vm :nomvm vm)
-  (set-vm-property vm :size size)
-  (set-vm-property vm :RUNNING nil)
+  (setf(get vm :nomvm) vm)
+  (setf(get vm :size) size)
+  (setf(get vm :RUNNING) nil)
   ;;Registres R0 à R3
-  (set-vm-registre vm :R0 0)
-  (set-vm-registre vm :R1 0)
-  (set-vm-registre vm :R2 0)
-  (set-vm-registre vm :R3 0)
+  (setf(get vm :R0) 0)
+  (setf(get vm :R1) 0)
+  (setf(get vm :R2) 0)
+  (setf(get vm :R3) 0)
   ;;base pointer, début de la pile
-  (set-vm-registre vm :BP 50)
+  (setf(get vm :BP) 50)
   ;;stack pointer, pointeur pile actuel
-  (set-vm-registre vm :SP 50)
+  (setf(get vm :SP) 50)
   ;;frame pointer, pointe sur le nb arguments de la fonction empilé
-  (set-vm-registre vm :FP 0)
+  (setf(get vm :FP) 0)
   ;;Drapeaux Equal, plus grand, plus petit pour les cmp
-  (set-vm-registre vm :EQ 0)
-  (set-vm-registre vm :PG 0)
-  (set-vm-registre vm :PP 0)
-  ;;Max stack, fin de la pile
-  (set-vm-property vm :maxStack (floor (* size 0.75)))
+  (setf(get vm :EQ) 0)
+  (setf(get vm :PG) 0)
+  (setf(get vm :PP) 0)
+  ;;Max stack, fin de la pile, vers 75% de la taille de la mémoire
+  (setf(get vm :maxStack) (floor (* size 0.75)))
   ;;Start Code, début de la zone de code juste après la fin de la pile
-  (set-vm-property vm :startCode (+ 1 (get-vm-property vm :maxStack)))
+  (setf(get vm :startCode) (+ 1 (get vm :maxStack)))
   ;;Program counter, initialisé au début de la zone de code
-  (set-vm-registre vm :PC (get-vm-property vm :startCode))
+  (setf(get vm :PC) (get vm :startCode))
   ;;Load Counter, initialisé au début de la zone de code
-  (set-vm-registre vm :LC (get-vm-property vm :startCode))
-  (set-vm-property vm :mem (make-array size))
+  (setf(get vm :LC) (get vm :startCode))
+  (setf(get vm :mem) (make-array size))
   ;;Hash table pour la résolution d'étiquettes
-  (set-vm-property vm :knownLabels (make-hash-table))
-  (set-vm-property vm :unknownLabels (make-hash-table))
+  (setf(get vm :knownLabels) (make-hash-table))
+  (setf(get vm :unknownLabels) (make-hash-table))
   ;;Affichage de l'état initial de la VM
   (vm-print vm)
 )
 
 
-(defun vm-exec-instr (vm instr)
-  ;;TODO
-)
 
 ;; ********** Chargement de code dans la mémoire d'une machine virtuelle.
 
@@ -56,21 +53,21 @@
     (inst-move vm (car asm) :R0)
     ;;On stocke la valeur du registre R0 à l'adresse mémoire du LOAD COUNTER courant
     ;;Ce qui équivaut a dire on charge le code en mémoire
-    (inst-store vm :R0 (get-vm-registre vm :LC))
+    (inst-store vm :R0 (get vm :LC))
     ;;Si le bout de code courant est un label
-    (if (eq (car (get-vm-registre vm :R0)) 'LABEL)
-    ;;On ajoute le label et son adresse à la liste des labels connus
-    (setf (gethash (second (get-vm-registre vm :R0)) (get-vm-property vm :knownLabels)) (get-vm-registre vm :LC))
-    ;;Sinon si on croise un JUMP, idem pour les inconnus
-    (if (eq (car (get-vm-registre vm :R0)) 'JUMP)
-      (setf (gethash (second (get-vm-registre vm :R0)) (get-vm-property vm :unknownLabels)) (get-vm-registre vm :LC))))
+    (if (eq (car (get vm :R0)) 'LABEL)
+    ;;On ajoute le label et son adresse+1 à la liste des labels connus
+    (setf (gethash (second (get vm :R0)) (get vm :knownLabels)) (+ 1 (get vm :LC)))
+    ;;Sinon si on croise un JUMP quelconque TODO, idem pour les inconnus
+    (if (eq (car (get vm :R0)) 'JUMP)
+      (setf (gethash (second (get vm :R0)) (get vm :unknownLabels)) (get vm :LC))))
     ;;Dans tous les cas on incrément load counter et on passe a l'instruction assembleur suivante
-    (incr-vm-registre vm :LC)
+    (incr-reg vm :LC)
     (setf asm (cdr asm))
   )
   (resolve-jumps vm)
   (inst-move vm '(HALT) :R0)
-  (inst-store vm :R0 (get-vm-registre vm :LC))  
+  (inst-store vm :R0 (get vm :LC))  
   (vm-print vm)
   '(Code chargé en mémoire !)
 )
@@ -80,27 +77,34 @@
   "On résoud chaque JUMP non résolu"
   (maphash
     (lambda (label indexDuJump)
-      (let ((known-address (gethash label (get-vm-property vm :knownLabels))))
+      (let ((known-address (gethash label (get vm :knownLabels))))
         (if known-address
             ;; Si le label est connu, remplacer par JUMP <adresse>
             (set-to-vm-mem vm indexDuJump (list `JUMP known-address))
             ;; Si le label est inconnu, remplacer par FUNCALL <label>
             (set-to-vm-mem vm indexDuJump (list `FUNCALL label)))))
-    (get-vm-property vm :unknownLabels)
+    (get vm :unknownLabels)
   )
 )
 ;; ********** Exécution de la machine virtuelle.
   
+(defun vm-exec-instr (vm instr)
+  (cond
+    ((eq instr 'ADD) (inst-add ))
+    ((eq instr 'SUB) "Le nombre est impair.")
+  
+  )
+)
 (defun vm-exec (&optional (vm 'vm))
-  (set-vm-registre vm :RUNNING T)
+  (setf(get vm :RUNNING) T)
     ;; Tant que la vm tourne on execute les instructions
-    (loop while (get-vm-registre vm :RUNNING) do 
+    (loop while (get vm :RUNNING) do 
       ;; On récup l'instruction courante via PC
-      (let ((instr (get-from-vm-mem vm (get-vm-registre vm :PC)))) 
+      (let ((instr (get-from-vm-mem vm (get vm :PC)))) 
 
       ;;On exécute l'instruction courante
       (vm-exec-instr vm instr)
-      (incr-vm-registre vm :PC);;On incrémente le PC
+      (incr-reg vm :PC);;On incrémente le PC
     )
   )
 )
