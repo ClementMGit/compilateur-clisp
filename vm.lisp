@@ -50,10 +50,10 @@
     (format t "~%Chargement de ")
     (print (car asm))
     ;;On met (car asm) dans le registre R0
-    (inst-move vm (car asm) :R0)
+    (exec-move vm (car asm) :R0)
     ;;On stocke la valeur du registre R0 à l'adresse mémoire du LOAD COUNTER courant
     ;;Ce qui équivaut a dire on charge le code en mémoire
-    (inst-store vm :R0 (get vm :LC))
+    (exec-store vm :R0 (get vm :LC))
     ;;Si le bout de code courant est un label
     (if (eq (car (get vm :R0)) 'LABEL)
     ;;On ajoute le label et son adresse+1 à la liste des labels connus
@@ -66,8 +66,8 @@
     (setf asm (cdr asm))
   )
   (resolve-jumps vm)
-  (inst-move vm '(HALT) :R0)
-  (inst-store vm :R0 (get vm :LC))  
+  (exec-move vm '(HALT) :R0)
+  (exec-store vm :R0 (get vm :LC))  
   (vm-print vm)
   '(Code chargé en mémoire !)
 )
@@ -88,23 +88,27 @@
 )
 ;; ********** Exécution de la machine virtuelle.
   
-(defun vm-exec-instr (vm instr)
-  (cond
-    ((eq instr 'ADD) (inst-add ))
-    ((eq instr 'SUB) "Le nombre est impair.")
-  
+(defun exec-instr (vm instr)
+  (format t "~%Exécution de ~S" instr)
+  (format t "~%PC : ~D" (get vm :PC))
+  (case (first instr)
+    ('MOVE (exec-move vm (second instr) (third instr)))
+    ('ADD (exec-add vm (second instr) (third instr)))
+    ('SUB (exec-sub vm (second instr) (third instr)))
+    ('MUL (exec-mul vm (second instr) (third instr)))
+    ('DIV (exec-div vm (second instr) (third instr)))
+    ('HALT (setf(get vm :RUNNING) nil))
   )
 )
 (defun vm-exec (&optional (vm 'vm))
   (setf(get vm :RUNNING) T)
-    ;; Tant que la vm tourne on execute les instructions
-    (loop while (get vm :RUNNING) do 
-      ;; On récup l'instruction courante via PC
-      (let ((instr (get-from-vm-mem vm (get vm :PC)))) 
-
-      ;;On exécute l'instruction courante
-      (vm-exec-instr vm instr)
-      (incr-reg vm :PC);;On incrémente le PC
+  ;; Tant que la vm tourne on execute les instructions
+  (loop while (get vm :RUNNING) do 
+    ;; On récup l'instruction courante via PC
+    (let ((instr (get-from-vm-mem vm (get vm :PC)))) 
+    ;;On exécute l'instruction courante
+    (exec-instr vm instr)
+    (incr-reg vm :PC);;On incrémente le PC
     )
   )
 )
