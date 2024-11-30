@@ -1,9 +1,8 @@
 (require "debug.lisp")
 
-;; ********** Création d'une machine virtuelle.
-
 (defun make-vm (&optional (vm 'vm) (size 1000))
-;; On affecte a chaque propriéte/registre un nom et une valeur
+  "Création d'une machine virtuelle"
+  ;; On affecte a chaque propriéte/registre un nom et une valeur initiale
   (setf(get vm :nomvm) vm)
   (setf(get vm :size) size)
   (setf(get vm :RUNNING) nil)
@@ -12,13 +11,13 @@
   (setf(get vm :R1) 0)
   (setf(get vm :R2) 0)
   (setf(get vm :R3) 0)
-  ;;base pointer, début de la pile
+  ;;Base pointer, début de la pile
   (setf(get vm :BP) 50)
-  ;;stack pointer, pointeur pile actuel
+  ;;Stack pointer, pointeur pile actuel
   (setf(get vm :SP) 50)
-  ;;frame pointer, pointe sur le nb arguments de la fonction empilé
+  ;;Frame pointer, pointe sur le nb arguments de la fonction empilé
   (setf(get vm :FP) 0)
-  ;;Drapeaux Equal, plus grand, plus petit pour les cmp
+  ;;Drapeaux Equal, plus grand, plus petit -> pour les cmp
   (setf(get vm :EQ) 0)
   (setf(get vm :PG) 0)
   (setf(get vm :PP) 0)
@@ -31,19 +30,14 @@
   ;;Load Counter, initialisé au début de la zone de code
   (setf(get vm :LC) (get vm :startCode))
   (setf(get vm :mem) (make-array size))
-  ;;Hash table pour la résolution d'étiquettes
+  ;;Hash tables pour la résolution d'étiquettes
   (setf(get vm :knownLabels) (make-hash-table))
   (setf(get vm :unknownLabels) (make-hash-table))
   ;;Affichage de l'état initial de la VM
   (vm-print vm)
 )
-
-
-
-;; ********** Chargement de code dans la mémoire d'une machine virtuelle.
-
 (defun vm-load (vm asm)
-  (print "~~~~~~Chargement du code en mémoire...~~~~~~")
+  (print "Chargement du code en mémoire...")
   (loop
     while (not (atom asm))
     do
@@ -71,10 +65,8 @@
   (vm-print vm)
   '(Code chargé en mémoire !)
 )
-
-
 (defun resolve-jumps (vm)
-  "On résoud chaque JUMP non résolu"
+  "Résout les adresses de chaque JUMP non résolu"
   (maphash
     (lambda (label indexDuJump)
       (let ((known-address (gethash label (get vm :knownLabels))))
@@ -86,9 +78,8 @@
     (get vm :unknownLabels)
   )
 )
-;; ********** Exécution de la machine virtuelle.
-  
 (defun exec-instr (vm instr)
+  "Exécute l'instruction passée en paramètre"
   (format t "~%Exécution de ~S" instr)
   (format t "~%PC : ~D" (get vm :PC))
   (case (first instr)
@@ -101,6 +92,7 @@
   )
 )
 (defun vm-exec (&optional (vm 'vm))
+  "Exécute le code présent en mémoire de la VM"
   (setf(get vm :RUNNING) T)
   ;; Tant que la vm tourne on execute les instructions
   (loop while (get vm :RUNNING) do 

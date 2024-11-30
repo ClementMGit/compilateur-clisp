@@ -6,5 +6,5 @@ Ce projet contient un compilateur CLISP -> Assembleur et une machine virtuelle e
 
 ## Démarrage express
 
-- `(load "testrun.lisp")` Charge tout le code.
-- `(runtest)` lance un test de chargement de code dans la vm
+- `(load "run.lisp")` Charge tout le code.
+- `(run)` lance un exemple de code dans la vm
