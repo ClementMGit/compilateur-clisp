@@ -105,6 +105,7 @@
       ('JLE (exec-jle vm arg1))
       ('JGT (exec-jgt vm arg1))
       ('JGE (exec-jge vm arg1))
+      ('JEQ (exec-jeq vm arg1))
       ('NOP ())
       ('HALT (setf(get vm :RUNNING) nil))
     )

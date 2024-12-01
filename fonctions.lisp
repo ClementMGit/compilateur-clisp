@@ -28,7 +28,7 @@
 )
 (defun exec-decr (vm reg)
   "Décrémente le registre reg de 1"
-  (setf(get vm reg) (- 1 (get vm reg)))
+  (setf(get vm reg) (- (get vm reg) 1))
 )
 (defun exec-add (vm src dest)
   "Addition telle que dest = dest+src où src peut être un littéral ou un registre"
@@ -56,32 +56,32 @@
 )
 (defun exec-jmp (vm indexToJumpTo)
   "Saut inconditionnel"
-  (setf(get vm :PC) indextojumpto)
+  (setf(get vm :PC) indexToJumpTo)
 )
 (defun exec-jgt (vm indexToJumpTo)
   "Saut si drapeau :GT = 1"
   (if (= (get vm :GT) 1)
-    (setf(get vm :PC) indextojumpto))
+    (setf(get vm :PC) indexToJumpTo))
 )
 (defun exec-jge (vm indexToJumpTo)
   "Saut si drapeau :GT = 1 ou :EQ = 1"
   (if (or (= (get vm :GT) 1) (= (get vm :EQ) 1))
-    (setf(get vm :PC) indextojumpto))
+    (setf(get vm :PC) indexToJumpTo))
 )
 (defun exec-jlt (vm indexToJumpTo)
   "Saut si drapeau :LT = 1"
   (if (= (get vm :LT) 1)
-    (setf(get vm :PC) indextojumpto))
+    (setf(get vm :PC) indexToJumpTo))
 )
 (defun exec-jle (vm indexToJumpTo)
   "Saut si drapeau :LT = 1 ou :EQ = 1"
   (if (or (= (get vm :LT) 1) (= (get vm :EQ) 1))
-    (setf(get vm :PC) indextojumpto))
+    (setf(get vm :PC) indexToJumpTo))
 )
 (defun exec-jeq (vm indexToJumpTo)
   "Saut si drapeau :EQ = 1"
   (if (= (get vm :EQ) 1)
-    (setf(get vm :PC) indextojumpto))
+    (setf(get vm :PC) indexToJumpTo))
 )
 (defun exec-jsr (vm indexToJumpTo)
   "Saut vers une fonction connue"
@@ -90,7 +90,7 @@
   ;;On incrémente :SP
   (exec-incr vm :SP)
   ;;On saute vers la fonction
-  (setf(get vm :PC) indextojumpto)
+  (setf(get vm :PC) indexToJumpTo)
 )
 (defun exec-rtn (vm)
   "Retourne d'une fonction vers l'appelant"
