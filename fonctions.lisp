@@ -14,13 +14,17 @@
     (setf(get vm dest) source)
   )
 )
-(defun exec-store (vm reg index)
-  "Stocke la valeur du registre reg à l'adresse index en mémoire"
-  (set-to-vm-mem vm index (get vm reg))
+(defun exec-store (vm src dest)
+  "Stocke la valeur du registre src à l'adresse(registre ou littéral) dest en mémoire"
+  (let ((destination (if (symbolp dest) (get vm dest) dest))) 
+    (set-to-vm-mem vm destination (get vm src))
+  )
 )
-(defun exec-load (vm index reg)
-  "Charge la valeur à l'adresse index de la mémoire vers le registre reg"
-  (setf(get vm reg) (get-from-vm-mem vm index))
+(defun exec-load (vm src dest)
+  "Charge la valeur à l'adresse(registre ou littéral) src de la mémoire vers le registre dest"
+  (let ((source (if (symbolp src) (get vm src) src))) 
+  (setf(get vm dest) (get-from-vm-mem vm source))
+  )
 )
 (defun exec-incr (vm reg)
   "Incrémente le registre reg de 1"
@@ -124,13 +128,23 @@
     )
   )
 )
-(defun exec-pop (vm reg)
-  "Ajoute argl, un ittéral ou registre au sommet de la pile"
+(defun exec-pop (vm dest)
+  "Copie le sommet de la pile dans le registre dest"
   (if (= (get vm :SP) (get vm :BP))
     (error "Pile vide, rien à retirer !")
     (progn 
       (exec-decr vm :SP)
-      (setf(get vm reg) (get-from-vm-mem vm (get vm :SP)))
+      (setf(get vm dest) (get-from-vm-mem vm (get vm :SP)))
     )
   )
 )
+(defun exec-funcall (vm args)
+  "Exécute une fonction Lisp avec les arguments extraits de la VM"
+  (let* ((func (first args))  ;; Fonction à appeler
+         (resolved-args (mapcar (lambda (arg)
+                                  (if (symbolp arg) (get vm arg) arg))
+                                (rest args))))  ;; Résoudre les arguments
+    ;;(format t "~%Fonction : ~A, Arguments résolus : ~A" func resolved-args)  ;; Debugging des arguments
+    (let ((result (apply func resolved-args)))  ;; Appel de la fonction
+      (format t "~%Résultat de ~A : ~A" func result)  ;; Debugging du résultat
+      (setf (get vm :R0) result))))  ;; Stocker le résultat dans R0

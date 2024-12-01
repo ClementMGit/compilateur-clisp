@@ -22,7 +22,7 @@
   (setf(get vm :GT) 0)
   (setf(get vm :LT) 0)
   ;;Max stack, fin de la pile, vers 75% de la taille de la mémoire
-  (setf(get vm :maxStack) (floor (* size 0.75)))
+  (setf(get vm :maxStack) (floor (* size 0.50)))
   ;;Start Code, début de la zone de code juste après la fin de la pile
   (setf(get vm :startCode) (+ 1 (get vm :maxStack)))
   ;;Program counter, initialisé au début de la zone de code
@@ -73,7 +73,7 @@
       (let ((known-address (gethash label (get vm :knownLabels))))
         (if known-address
             ;; Si le label est connu, remplacer par <adresse> dans le JMP/JSR/etc 
-            (set-to-vm-mem vm indexDuJump (list (first (get-from-vm-mem vm indexdujump)) known-address))
+            (set-to-vm-mem vm indexDuJump (list (first (get-from-vm-mem vm indexDujump)) known-address))
             ;; Si le label est inconnu, remplacer par FUNCALL <label>
             (set-to-vm-mem vm indexDuJump (list `FUNCALL label)))))
     (get vm :unknownLabels)
@@ -106,14 +106,14 @@
       ('JGT (exec-jgt vm arg1))
       ('JGE (exec-jge vm arg1))
       ('JEQ (exec-jeq vm arg1))
-      ('NOP ())
+      ('FUNCALL (exec-funcall vm (rest instr) ))
       ('HALT (setf(get vm :RUNNING) nil))
     )
   )
 )
 (defun vm-exec (&optional (vm 'vm))
   "Exécute le code présent en mémoire de la VM"
-  (setf(get vm :RUNNING) T)
+  (setf(get vm :RUNNING) t)
   ;; Tant que la vm tourne on execute les instructions
   (loop while (get vm :RUNNING) do 
     ;; On récup l'instruction courante via PC

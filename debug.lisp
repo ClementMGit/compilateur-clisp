@@ -6,7 +6,6 @@
     (format t "~%- Pointeurs : ~%--- BP : ~D ~%--- SP : ~D ~%--- FP : ~D" (get vm :BP) (get vm :SP) (get vm :FP))
     (format t "~%- Drapeaux : ~%--- EQ : ~D ~%--- LT : ~D ~%--- GT : ~D" (get vm :EQ) (get vm :LT) (get vm :GT))
     (format t "~%- Compteurs : ~%--- PC : ~D ~%--- LC : ~D" (get vm :PC) (get vm :LC))
-    (format t "~%RUNNING : ~S ~%" (get vm :RUNNING))
     (format t "~%Mémoire :~% ~% ~S ~%" (get vm :mem))
 )
 

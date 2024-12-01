@@ -2,11 +2,11 @@
 (setq test-count 0)  ; Compteur global des tests réussis
 
 (defun run-tests ()
-  (let ((nbTests 29)) ;; Nombre total de tests
+  (let ((nbTests 48)) ;; Nombre total de tests
     ;; Appeler toutes les fonctions de test
     (test-exec-move);2 Tests
-    (test-exec-store);1 Test
-    (test-exec-load);1 Test
+    (test-exec-store);2 Test
+    (test-exec-load);2 Test
     (test-exec-incr);1 Test
     (test-exec-decr);1 Test
     (test-exec-add);2 Tests
@@ -21,7 +21,10 @@
     (test-exec-jeq);2 Tests
     (test-exec-jsr);1 Test
     (test-exec-rtn);1 Test
-    ;;TODO CMP PUSH POP HALT
+    (test-exec-push);2 Tests
+    (test-exec-pop);1 Test
+    (test-exec-cmp);12 Tests
+    (test-exec-funcall);2 Tests
     ;; Afficher les résultats
     (format t "~%Nombre total de tests réussis : ~D/~D~%" test-count nbtests )
   )
@@ -54,6 +57,7 @@
         (format t "~%Test 'MOVE :R2 :R1 (src registre)' échoué, valeur attendue : 5, obtenue : ~A.~%" (get 'vm :R1)))
 )
 (defun test-exec-store ()
+  ;; Cas où dest est un littéral
   (make-vm 'vm)
   (setf (get 'vm :R1) 42)
   (vm-load 'vm '((STORE :R1 10)))
@@ -61,8 +65,19 @@
   (if (eq (get-from-vm-mem 'vm 10) 42)
       (progn
         (increment-test-count)
-        (format t "~%Test 'STORE :R1 10' réussi.~%"))
-      (format t "~%Test 'STORE :R1 10' échoué, valeur attendue : 42, obtenue : ~A.~%" (get-from-vm-mem 'vm 10))))
+        (format t "~%Test 'STORE :R1 10 (dest littéral)' réussi.~%"))
+      (format t "~%Test 'STORE :R1 10 (dest littéral)' échoué, valeur attendue : 42, obtenue : ~A.~%" (get-from-vm-mem 'vm 10)))
+      ;; Cas où dest est un littéral
+  (make-vm 'vm)
+  (setf (get 'vm :R1) 42 (get 'vm :R2) 10)
+  (vm-load 'vm '((STORE :R1 :R2)))
+  (vm-exec 'vm)
+  (if (eq (get-from-vm-mem 'vm 10) 42)
+      (progn
+        (increment-test-count)
+        (format t "~%Test 'STORE :R1 :R2 (dest registre)' réussi.~%"))
+      (format t "~%Test 'STORE :R1 :R2 (dest registre)' échoué, valeur attendue : 42, obtenue : ~A.~%" (get-from-vm-mem 'vm 10)))
+)
 
 (defun test-exec-load ()
   (make-vm 'vm)
@@ -72,8 +87,19 @@
   (if (eq (get 'vm :R1) 42)
       (progn
         (increment-test-count)
-        (format t "~%Test 'LOAD 10 :R1' réussi.~%"))
-      (format t "~%Test 'LOAD 10 :R1' échoué, valeur attendue : 42, obtenue : ~A.~%" (get 'vm :R1))))
+        (format t "~%Test 'LOAD 10 :R1 (src littéral)' réussi.~%"))
+      (format t "~%Test 'LOAD 10 :R1 (src littéral)' échoué, valeur attendue : 42, obtenue : ~A.~%" (get 'vm :R1)))
+  (make-vm 'vm)
+  (set-to-vm-mem 'vm 10 42)
+  (setf (get 'vm :R2) 10)
+  (vm-load 'vm '((LOAD :R2 :R1)))
+  (vm-exec 'vm)
+  (if (eq (get 'vm :R1) 42)
+      (progn
+        (increment-test-count)
+        (format t "~%Test 'LOAD :R2 :R1 (src registre)' réussi.~%"))
+      (format t "~%Test 'LOAD :R2 :R1 (src registre)' échoué, valeur attendue : 42, obtenue : ~A.~%" (get 'vm :R1)))
+)
 
 (defun test-exec-incr ()
   (make-vm 'vm)
@@ -340,7 +366,6 @@
     (make-vm 'vm)
     (setf (get 'vm :R1) 0)
     (setf (get 'vm :EQ) 1)
-
     (vm-load 'vm '((JEQ label1)(MOVE 1 :R1)(LABEL label1)))
     (vm-exec 'vm)
     (if (= (get 'vm :R1) 0)
@@ -352,7 +377,6 @@
     (make-vm 'vm)
     (setf (get 'vm :R1) 0)
     (setf (get 'vm :EQ) 0)
-
     (vm-load 'vm '((JEQ label1)(MOVE 1 :R1)(LABEL label1)))
     (vm-exec 'vm)
     (if (= (get 'vm :R1) 1)
@@ -377,14 +401,228 @@
 )
 
 (defun test-exec-rtn ()
+    ;;Test d'un cas typique d'appel de fonction avec RTN
     (make-vm 'vm)
     (vm-load 'vm '((JMP finfonction1)(LABEL fonction1)(MOVE 1 :R1)(RTN)(LABEL inateignable)(MOVE 1 :R2)(LABEL finfonction1)(JSR fonction1)(MOVE 1 :R3)))
     (vm-exec 'vm)
-    (vm-print 'vm)
     (if (and (and (= (get 'vm :R1) 1) (= (get 'vm :R2) 0)) (= (get 'vm :R3) 1) )
             (progn
                 (increment-test-count)
                 (format t "~%Test RTN passé"))
             (format t "~%Test RTN échoué")
     )
+)
+
+(defun test-exec-push ()
+  ;; Cas où src est un littéral
+  (make-vm 'vm)
+  (vm-load 'vm '((PUSH 3)))
+  (vm-exec 'vm)
+  (if (eq (get-from-vm-mem 'vm (- (get 'vm :SP) 1)) 3)
+      (progn
+        (increment-test-count)
+        (format t "~%Test 'PUSH 3 (src littéral)' réussi.~%"))
+      (format t "~%Test 'PUSH 3 (src littéral)' échoué, valeur attendue : 3, obtenue : ~A.~%" (get-from-vm-mem 'vm (- (get 'vm :SP) 1))))
+  ;; Cas où src est un registre
+  (make-vm 'vm)
+  (setf (get 'vm :R1) 3)
+  (vm-load 'vm '((PUSH :R1)))
+  (vm-exec 'vm)
+  (if (eq (get-from-vm-mem 'vm (- (get 'vm :SP) 1)) 3)
+      (progn
+        (increment-test-count)
+        (format t "~%Test 'PUSH :R1 (src registre)' réussi.~%"))
+      (format t "~%Test 'PUSH :R1 (src registre)' échoué, valeur attendue : 3, obtenue : ~A.~%" (get-from-vm-mem 'vm (- (get 'vm :SP) 1))))
+)
+
+(defun test-exec-pop ()
+  (make-vm 'vm)
+  (vm-load 'vm '((PUSH 3)(POP :R1)))
+  (vm-exec 'vm)
+  (if (= (get 'vm :R1) 3) 
+      (progn
+        (increment-test-count)
+        (format t "~%Test 'POP :R1' réussi.~%"))
+      (format t "~%Test 'POP :R1' échoué, valeur attendue : 3, obtenue : ~A.~%" (get 'vm :R1)))
+)
+(defun test-exec-cmp ()
+  ;; Cas où le premier argument est inférieur au second (littéraux)
+  (make-vm 'vm)
+  (vm-load 'vm '((CMP 3 5)))
+  (vm-exec 'vm)
+  (if (and (= (get 'vm :FEQ) 0)
+          (= (get 'vm :FLT) 1)
+          (= (get 'vm :FGT) 0))
+      (progn
+        (increment-test-count)
+        (format t "~%Test 'CMP 3 5 (inférieur, littéraux)' réussi.~%"))
+      (format t "~%Test 'CMP 3 5 (inférieur, littéraux)' échoué, FEQ: ~A, FLT: ~A, FGT: ~A.~%" 
+              (get 'vm :FEQ) (get 'vm :FLT) (get 'vm :FGT)))
+  ;; Cas où le premier argument est inférieur au second (registres)
+  (make-vm 'vm)
+  (setf (get 'vm :R1) 5 (get 'vm :R2) 10)
+  (vm-load 'vm '((CMP :R1 :R2)))
+  (vm-exec 'vm)
+  (if (and (= (get 'vm :FEQ) 0)
+          (= (get 'vm :FLT) 1)
+          (= (get 'vm :FGT) 0))
+      (progn
+        (increment-test-count)
+        (format t "~%Test 'CMP :R1 :R2 (inférieur, registres)' réussi.~%"))
+      (format t "~%Test 'CMP :R1 :R2 (inférieur, registres)' échoué, FEQ: ~A, FLT: ~A, FGT: ~A.~%" 
+              (get 'vm :FEQ) (get 'vm :FLT) (get 'vm :FGT)))
+  ;; Cas où le premier argument est un littéral inférieur au second un registre
+  (make-vm 'vm)
+  (setf (get 'vm :R2) 10)
+  (vm-load 'vm '((CMP 5 :R2)))
+  (vm-exec 'vm)
+  (if (and (= (get 'vm :FEQ) 0)
+          (= (get 'vm :FLT) 1)
+          (= (get 'vm :FGT) 0))
+      (progn
+        (increment-test-count)
+        (format t "~%Test 'CMP 5 :R2 (inférieur, littéral et registre)' réussi.~%"))
+      (format t "~%Test 'CMP 5 :R2 (inférieur, littéral et registre)' échoué, FEQ: ~A, FLT: ~A, FGT: ~A.~%" 
+              (get 'vm :FEQ) (get 'vm :FLT) (get 'vm :FGT)))
+  ;; Cas où le premier argument est un registre inférieur au second un littéral
+  (make-vm 'vm)
+  (setf (get 'vm :R2) 5)
+  (vm-load 'vm '((CMP :R2 15)))
+  (vm-exec 'vm)
+  (if (and (= (get 'vm :FEQ) 0)
+          (= (get 'vm :FLT) 1)
+          (= (get 'vm :FGT) 0))
+      (progn
+        (increment-test-count)
+        (format t "~%Test 'CMP :R2 15 (inférieur, registre et littéral)' réussi.~%"))
+      (format t "~%Test 'CMP :R2 15 (inférieur, registre et littéral)' échoué, FEQ: ~A, FLT: ~A, FGT: ~A.~%" 
+              (get 'vm :FEQ) (get 'vm :FLT) (get 'vm :FGT)))
+  ;; Cas où le premier argument est supérieur au second (littéraux)
+  (make-vm 'vm)
+  (vm-load 'vm '((CMP 5 3)))
+  (vm-exec 'vm)
+  (if (and (= (get 'vm :FEQ) 0)
+          (= (get 'vm :FLT) 0)
+          (= (get 'vm :FGT) 1))
+      (progn
+        (increment-test-count)
+        (format t "~%Test 'CMP 5 3 (supérieur, littéraux)' réussi.~%"))
+      (format t "~%Test 'CMP 5 3 (supérieur, littéraux)' échoué, FEQ: ~A, FLT: ~A, FGT: ~A.~%" 
+              (get 'vm :FEQ) (get 'vm :FLT) (get 'vm :FGT)))
+  ;; Cas où le premier argument est supérieur au second (registres)
+  (make-vm 'vm)
+  (setf (get 'vm :R1) 10 (get 'vm :R2) 5)
+  (vm-load 'vm '((CMP :R1 :R2)))
+  (vm-exec 'vm)
+  (if (and (= (get 'vm :FEQ) 0)
+          (= (get 'vm :FLT) 0)
+          (= (get 'vm :FGT) 1))
+      (progn
+        (increment-test-count)
+        (format t "~%Test 'CMP :R1 :R2 (supérieur, registres)' réussi.~%"))
+      (format t "~%Test 'CMP :R1 :R2 (supérieur, registres)' échoué, FEQ: ~A, FLT: ~A, FGT: ~A.~%" 
+              (get 'vm :FEQ) (get 'vm :FLT) (get 'vm :FGT)))
+  ;; Cas où le premier argument registre est supérieur au second littéral
+  (make-vm 'vm)
+  (setf (get 'vm :R1) 7)
+  (vm-load 'vm '((CMP :R1 5)))
+  (vm-exec 'vm)
+  (if (and (= (get 'vm :FEQ) 0)
+          (= (get 'vm :FLT) 0)
+          (= (get 'vm :FGT) 1))
+      (progn
+        (increment-test-count)
+        (format t "~%Test 'CMP :R1 5 (supérieur, registre et littéral)' réussi.~%"))
+      (format t "~%Test 'CMP :R1 5 (supérieur, registre et littéral)' échoué, FEQ: ~A, FLT: ~A, FGT: ~A.~%" 
+              (get 'vm :FEQ) (get 'vm :FLT) (get 'vm :FGT)))
+;; Cas où le premier argument littéral est supérieur au second registre
+  (make-vm 'vm)
+  (setf (get 'vm :R1) 5)
+  (vm-load 'vm '((CMP 10 :R1)))
+  (vm-exec 'vm)
+  (if (and (= (get 'vm :FEQ) 0)
+          (= (get 'vm :FLT) 0)
+          (= (get 'vm :FGT) 1))
+      (progn
+        (increment-test-count)
+        (format t "~%Test 'CMP 10 :R1 (supérieur, littéral et registre)' réussi.~%"))
+      (format t "~%Test 'CMP 10 :R1 (supérieur, littéral et registre)' échoué, FEQ: ~A, FLT: ~A, FGT: ~A.~%" 
+              (get 'vm :FEQ) (get 'vm :FLT) (get 'vm :FGT)))
+
+  ;; Cas où les deux arguments sont égaux (littéraux)
+  (make-vm 'vm)
+  (vm-load 'vm '((CMP 5 5)))
+  (vm-exec 'vm)
+  (if (and (= (get 'vm :FEQ) 1)
+          (= (get 'vm :FLT) 0)
+          (= (get 'vm :FGT) 0))
+      (progn
+        (increment-test-count)
+        (format t "~%Test 'CMP 5 5 (égalité, littéraux)' réussi.~%"))
+      (format t "~%Test 'CMP 5 5 (égalité, littéraux)' échoué, FEQ: ~A, FLT: ~A, FGT: ~A.~%" 
+              (get 'vm :FEQ) (get 'vm :FLT) (get 'vm :FGT)))
+
+  ;; Cas où les deux arguments sont égaux (registres)
+  (make-vm 'vm)
+  (setf (get 'vm :R1) 10 (get 'vm :R2) 10)
+  (vm-load 'vm '((CMP :R1 :R2)))
+  (vm-exec 'vm)
+  (if (and (= (get 'vm :FEQ) 1)
+          (= (get 'vm :FLT) 0)
+          (= (get 'vm :FGT) 0))
+      (progn
+        (increment-test-count)
+        (format t "~%Test 'CMP :R1 :R2 (égalité, registre et registre)' réussi.~%"))
+      (format t "~%Test 'CMP :R1 :R2 (égalité, registre et registre)' échoué, FEQ: ~A, FLT: ~A, FGT: ~A.~%" 
+              (get 'vm :FEQ) (get 'vm :FLT) (get 'vm :FGT)))
+
+  ;; Cas où le premier argument est un littéral et le second un registre (égalité)
+  (make-vm 'vm)
+  (setf (get 'vm :R1) 5)
+  (vm-load 'vm '((CMP 5 :R1)))
+  (vm-exec 'vm)
+  (if (and (= (get 'vm :FEQ) 1)
+          (= (get 'vm :FLT) 0)
+          (= (get 'vm :FGT) 0))
+      (progn
+        (increment-test-count)
+        (format t "~%Test 'CMP 5 :R1 (égalité, littéral et registre)' réussi.~%"))
+      (format t "~%Test 'CMP 5 :R1 (égalité, littéral et registre)' échoué, FEQ: ~A, FLT: ~A, FGT: ~A.~%" 
+              (get 'vm :FEQ) (get 'vm :FLT) (get 'vm :FGT)))
+
+  ;; Cas où le premier argument est un registre et le second un littéral (égalité)
+  (make-vm 'vm)
+  (setf (get 'vm :R1) 7)
+  (vm-load 'vm '((CMP :R1 7)))
+  (vm-exec 'vm)
+  (if (and (= (get 'vm :FEQ) 1)
+          (= (get 'vm :FLT) 0)
+          (= (get 'vm :FGT) 0))
+      (progn
+        (increment-test-count)
+        (format t "~%Test 'CMP :R1 7 (égalité, registre et littéral)' réussi.~%"))
+      (format t "~%Test 'CMP :R1 7 (égalité, registre et littéral)' échoué, FEQ: ~A, FLT: ~A, FGT: ~A.~%" 
+              (get 'vm :FEQ) (get 'vm :FLT) (get 'vm :FGT)))
+
+)
+
+(defun test-exec-funcall ()
+  (make-vm 'vm)
+  (vm-load 'vm '((FUNCALL member 3 (1 2 3 4 5))(MOVE :R0 :R1)))
+  (vm-exec 'vm)
+  (vm-print)
+  (if (equal (get 'vm :R1) '(3 4 5))
+    (progn
+      (increment-test-count)
+      (format t "~%Test 'FUNCALL member 3 (1 2 3 4 5)' réussi.~%"))
+    (format t "~%Test 'FUNCALL member 3 (1 2 3 4 5)' échoué, valeur attendue : (3 4 5), obtenue : ~A.~%" (get 'vm :R1)))
+  (make-vm 'vm)
+  (vm-load 'vm '((FUNCALL car (1 2 3 4 5))(MOVE :R0 :R1)))
+  (vm-exec 'vm)
+
+  (if (eq (get 'vm :R1) 1)
+    (progn
+      (increment-test-count)
+      (format t "~%Test 'FUNCALL car (1 2 3 4 5)' réussi.~%"))
+    (format t "~%Test 'FUNCALL car (1 2 3 4 5)' échoué, valeur attendue : 1, obtenue : ~A.~%" (get 'vm :R1)))
 )
