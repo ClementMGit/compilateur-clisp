@@ -25,6 +25,7 @@
     (test-exec-pop);1 Test
     (test-exec-cmp);12 Tests
     (test-exec-funcall);2 Tests
+    ;;(test-recurs)
     ;; Afficher les résultats
     (format t "~%Nombre total de tests réussis : ~D/~D~%" test-count nbtests )
   )
@@ -625,4 +626,10 @@
       (increment-test-count)
       (format t "~%Test 'FUNCALL car (1 2 3 4 5)' réussi.~%"))
     (format t "~%Test 'FUNCALL car (1 2 3 4 5)' échoué, valeur attendue : 1, obtenue : ~A.~%" (get 'vm :R1)))
+)
+((defun test-recurs ()
+  (make-vm)
+  (vm-load 'vm '()
+  ))
+(vm-exec)
 )

@@ -33,6 +33,7 @@
   ;;Hash tables pour la résolution d'étiquettes
   (setf(get vm :knownLabels) (make-hash-table))
   (setf(get vm :unknownLabels) (make-hash-table))
+  (setf)
   ;;Affichage de l'état initial de la VM
   (vm-print vm)
 )
@@ -50,11 +51,12 @@
     (exec-store vm :R0 (get vm :LC))
     ;;Si le bout de code courant est un label
     (if (eq (car (get vm :R0)) 'LABEL)
-    ;;On ajoute le label et son adresse+1 à la liste des labels connus
-    (setf (gethash (second (get vm :R0)) (get vm :knownLabels)) (get vm :LC))
-    ;;Sinon si on croise un JMP, JSR etc quelconque, idem pour les inconnus
-    (if (char= (char (symbol-name (car (get vm :R0))) 0) #\J)
-      (setf (gethash (second (get vm :R0)) (get vm :unknownLabels)) (get vm :LC))))
+        ;;On ajoute le label et son adresse à la liste des labels connus
+        (setf (gethash (second (get vm :R0)) (get vm :knownLabels)) (get vm :LC))
+        ;;Sinon si on croise un JMP, JSR etc quelconque, idem pour les inconnus
+        (if (char= (char (symbol-name (car (get vm :R0))) 0) #\J)
+            ;; Ajouter l'adresse à la liste des inconnus
+              (push (get vm :LC) (gethash (second (get vm :R0)) (get vm :unknownLabels)))))
     ;;Dans tous les cas on incrémente Load counter et on passe a l'instruction assembleur suivante
     (exec-incr vm :LC)
     (setf asm (cdr asm))
@@ -68,16 +70,23 @@
 )
 (defun resolve-jumps (vm)
   "Résout les adresses de chaque JUMP non résolu"
-  (maphash
-    (lambda (label indexDuJump)
-      (let ((known-address (gethash label (get vm :knownLabels))))
-        (if known-address
-            ;; Si le label est connu, remplacer par <adresse> dans le JMP/JSR/etc 
-            (set-to-vm-mem vm indexDuJump (list (first (get-from-vm-mem vm indexDujump)) known-address))
-            ;; Si le label est inconnu, remplacer par FUNCALL <label>
-            (set-to-vm-mem vm indexDuJump (list `FUNCALL label)))))
-    (get vm :unknownLabels)
-  )
+  (print-hash-table (get vm :knownLabels))
+  (print-hash-table (get vm :unknownLabels))
+
+ (maphash
+  (lambda (label listdeindexes)
+    (let ((known-address (gethash label (get vm :knownLabels))))
+      (if known-address
+          ;; Si le label est connu, remplacez les adresses dans les JMP/JSR
+          (dolist (indexDuJump listdeindexes)
+            (set-to-vm-mem vm indexDuJump (list (first (get-from-vm-mem vm indexDuJump)) known-address))
+          )
+          ;; Si le label est inconnu, remplacez les différents JUMP par FUNCALL <label>
+          (dolist (indexDuJump listdeindexes)
+            (set-to-vm-mem vm indexDuJump (list 'FUNCALL label)))))
+          )
+  (get vm :unknownLabels))
+
 )
 (defun exec-instr (vm instr)
   "Exécute l'instruction passée en paramètre"

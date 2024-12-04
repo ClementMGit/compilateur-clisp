@@ -6,5 +6,5 @@ Ce projet contient un compilateur CLISP vers Assembleur et une machine virtuelle
 
 ## Démarrage express
 
-- `(load "run.lisp")` charge tout le code nécessaire
-- `(run)` charge et exécute un exemple de code assembleur dans la vm
+- `(load "utests.lisp")` charge tout le code nécessaires aux tests unitaires
+- `(run-tests)` charge et exécute tous les tests unitaires
