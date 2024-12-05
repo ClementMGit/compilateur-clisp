@@ -139,12 +139,26 @@
   )
 )
 (defun exec-funcall (vm args)
-  "Exécute une fonction Lisp avec les arguments extraits de la VM"
-  (let* ((func (first args))  ;; Fonction à appeler
-         (resolved-args (mapcar (lambda (arg)
-                                  (if (symbolp arg) (get vm arg) arg))
-                                (rest args))))  ;; Résoudre les arguments
-    ;;(format t "~%Fonction : ~A, Arguments résolus : ~A" func resolved-args)  ;; Debugging des arguments
-    (let ((result (apply func resolved-args)))  ;; Appel de la fonction
-      (format t "~%Résultat de ~A : ~A" func result)  ;; Debugging du résultat
-      (setf (get vm :R0) result))))  ;; Stocker le résultat dans R0
+  "Exécute une fonction Lisp avec les arguments présents sur la pile."
+  
+  ;; Récupérer la fonction à appeler
+  (let* ((func (first args))           ;; Fonction à appeler
+         (nb-args (get-from-vm-mem vm (get vm :FP)))       ;; Nombre d'arguments
+         (resolved-args '()))          ;; Liste des arguments à résoudre
+    ;; Construire la liste des arguments depuis la pile
+
+    (let ((i 1))  ;; i commence à 1
+      (loop while (<= i nb-args) do
+            (push (get-from-vm-mem vm (- (get vm :FP) i)) resolved-args)
+            (incf i);; Incrémenter i
+      )
+    )  
+    ;; Debugging : afficher les arguments résolus
+    ;(format t "~%Fonction : ~A, Arguments résolus : ~A" func resolved-args)
+    ;; Appeler la fonction avec les arguments résolus et
+    ;; Stocker le résultat  dans R0
+    (setf (get vm :R0) (apply func resolved-args))
+    
+  )
+      
+)
