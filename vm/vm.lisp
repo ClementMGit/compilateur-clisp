@@ -6,6 +6,7 @@
   (setf(get vm :nomvm) vm)
   (setf(get vm :size) size)
   (setf(get vm :RUNNING) nil)
+  (setf(get vm 'T) T);Permet d'autoriser un MOVE T R0 par exemple, sans trop modifier de code
   ;;Registres R0 à R3
   (setf(get vm :R0) 0)
   (setf(get vm :R1) 0)
@@ -37,7 +38,7 @@
   ;;Affichage de l'état initial de la VM
   (vm-print vm)
 )
-(defun vm-load (vm asm)
+(defun vm-load (asm &optional (vm 'vm))
   (print "Chargement du code en mémoire...")
   (loop
     while (not (atom asm))
@@ -70,8 +71,8 @@
 )
 (defun resolve-jumps (vm)
   "Résout les adresses de chaque JUMP non résolu"
-  (print-hash-table (get vm :knownLabels))
-  (print-hash-table (get vm :unknownLabels))
+  ;(print-hash-table (get vm :knownLabels))
+  ;(print-hash-table (get vm :unknownLabels))
 
  (maphash
   (lambda (label listdeindexes)

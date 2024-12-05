@@ -2,33 +2,32 @@
 (setq test-count 0)  ; Compteur global des tests réussis
 
 (defun run-tests ()
-  (let ((nbTests 48)) ;; Nombre total de tests
-    ;; Appeler toutes les fonctions de test
-    (test-exec-move);2 Tests
-    (test-exec-store);2 Test
-    (test-exec-load);2 Test
-    (test-exec-incr);1 Test
-    (test-exec-decr);1 Test
-    (test-exec-add);2 Tests
-    (test-exec-sub);2 Tests
-    (test-exec-mul);2 Tests
-    (test-exec-div);2 Tests
-    (test-exec-jmp);1 Test
-    (test-exec-jgt);2 Tests
-    (test-exec-jge);3 Tests
-    (test-exec-jlt);2 Tests
-    (test-exec-jle);3 Tests
-    (test-exec-jeq);2 Tests
-    (test-exec-jsr);1 Test
-    (test-exec-rtn);1 Test
-    (test-exec-push);2 Tests
-    (test-exec-pop);1 Test
-    (test-exec-cmp);12 Tests
-    (test-exec-funcall);2 Tests
-    ;;(test-recurs)
-    ;; Afficher les résultats
-    (format t "~%Nombre total de tests réussis : ~D/~D~%" test-count nbtests )
-  )
+
+  ;; Appeler toutes les fonctions de test
+  (test-exec-move);2 Tests
+  (test-exec-store);2 Test
+  (test-exec-load);2 Test
+  (test-exec-incr);1 Test
+  (test-exec-decr);1 Test
+  (test-exec-add);2 Tests
+  (test-exec-sub);2 Tests
+  (test-exec-mul);2 Tests
+  (test-exec-div);2 Tests
+  (test-exec-jmp);1 Test
+  (test-exec-jgt);2 Tests
+  (test-exec-jge);3 Tests
+  (test-exec-jlt);2 Tests
+  (test-exec-jle);3 Tests
+  (test-exec-jeq);2 Tests
+  (test-exec-jsr);1 Test
+  (test-exec-rtn);1 Test
+  (test-exec-push);2 Tests
+  (test-exec-pop);1 Test
+  (test-exec-cmp);12 Tests
+  (test-exec-funcall);2 Tests
+  (test)
+  ;; Afficher les résultats
+  (format t "~%Nombre total de tests réussis : ~D/48~%" test-count)
 )
 
 (defun increment-test-count ()
@@ -38,7 +37,7 @@
     ;; Cas où src est un littéral
     (make-vm)
     (setf (get 'vm :R1) 10)
-    (vm-load 'vm '((MOVE 5 :R1)))
+    (vm-load '((MOVE 5 :R1)))
     (vm-exec)
     (if (eq (get 'vm :R1) 5)
         (progn
@@ -49,7 +48,7 @@
     ;; Cas où src est un registre
     (make-vm)
     (setf (get 'vm :R1) 10 (get 'vm :R2) 5)
-    (vm-load 'vm '((MOVE :R2 :R1)))
+    (vm-load '((MOVE :R2 :R1)))
     (vm-exec)
     (if (eq (get 'vm :R1) 5)
         (progn
@@ -61,7 +60,7 @@
   ;; Cas où dest est un littéral
   (make-vm)
   (setf (get 'vm :R1) 42)
-  (vm-load 'vm '((STORE :R1 10)))
+  (vm-load '((STORE :R1 10)))
   (vm-exec)
   (if (eq (get-from-vm-mem 'vm 10) 42)
       (progn
@@ -71,7 +70,7 @@
       ;; Cas où dest est un littéral
   (make-vm)
   (setf (get 'vm :R1) 42 (get 'vm :R2) 10)
-  (vm-load 'vm '((STORE :R1 :R2)))
+  (vm-load '((STORE :R1 :R2)))
   (vm-exec)
   (if (eq (get-from-vm-mem 'vm 10) 42)
       (progn
@@ -83,7 +82,7 @@
 (defun test-exec-load ()
   (make-vm)
   (set-to-vm-mem 'vm 10 42)
-  (vm-load 'vm '((LOAD 10 :R1)))
+  (vm-load '((LOAD 10 :R1)))
   (vm-exec)
   (if (eq (get 'vm :R1) 42)
       (progn
@@ -93,7 +92,7 @@
   (make-vm)
   (set-to-vm-mem 'vm 10 42)
   (setf (get 'vm :R2) 10)
-  (vm-load 'vm '((LOAD :R2 :R1)))
+  (vm-load '((LOAD :R2 :R1)))
   (vm-exec)
   (if (eq (get 'vm :R1) 42)
       (progn
@@ -105,7 +104,7 @@
 (defun test-exec-incr ()
   (make-vm)
   (setf (get 'vm :R1) 0)
-  (vm-load 'vm '((INCR :R1)))
+  (vm-load '((INCR :R1)))
   (vm-exec)
   (if (eq (get 'vm :R1) 1)
       (progn
@@ -116,7 +115,7 @@
 (defun test-exec-decr ()
   (make-vm)
   (setf (get 'vm :R1) 1)
-  (vm-load 'vm '((DECR :R1)))
+  (vm-load '((DECR :R1)))
   (vm-exec)
   (if (eq (get 'vm :R1) 0)
       (progn
@@ -128,7 +127,7 @@
   ;; Cas où src est un littéral
   (make-vm)
   (setf (get 'vm :R1) 10)
-  (vm-load 'vm '((ADD 5 :R1)))
+  (vm-load '((ADD 5 :R1)))
   (vm-exec)
   (if (eq (get 'vm :R1) 15)
       (progn
@@ -139,7 +138,7 @@
   ;; Cas où src est un registre
   (make-vm)
   (setf (get 'vm :R1) 10 (get 'vm :R2) 5)
-  (vm-load 'vm '((ADD :R2 :R1)))
+  (vm-load '((ADD :R2 :R1)))
   (vm-exec)
   (if (eq (get 'vm :R1) 15)
       (progn
@@ -151,7 +150,7 @@
   ;; Cas où src est un littéral
   (make-vm)
   (setf (get 'vm :R1) 10)
-  (vm-load 'vm '((SUB 3 :R1)))
+  (vm-load '((SUB 3 :R1)))
   (vm-exec)
   (if (eq (get 'vm :R1) 7)
       (progn
@@ -162,7 +161,7 @@
   ;; Cas où src est un registre
   (make-vm)
   (setf (get 'vm :R1) 10 (get 'vm :R2) 3)
-  (vm-load 'vm '((SUB :R2 :R1)))
+  (vm-load '((SUB :R2 :R1)))
   (vm-exec)
   (if (eq (get 'vm :R1) 7)
       (progn
@@ -174,7 +173,7 @@
   ;; Cas où src est un littéral
   (make-vm)
   (setf (get 'vm :R1) 4)
-  (vm-load 'vm '((MUL 3 :R1)))
+  (vm-load '((MUL 3 :R1)))
   (vm-exec)
   (if (eq (get 'vm :R1) 12)
       (progn
@@ -185,7 +184,7 @@
   ;; Cas où src est un registre
   (make-vm)
   (setf (get 'vm :R1) 4 (get 'vm :R2) 3)
-  (vm-load 'vm '((MUL :R2 :R1)))
+  (vm-load '((MUL :R2 :R1)))
   (vm-exec)
   (if (eq (get 'vm :R1) 12)
       (progn
@@ -197,7 +196,7 @@
   ;; Cas où src est un littéral
   (make-vm)
   (setf (get 'vm :R1) 10)
-  (vm-load 'vm '((DIV 2 :R1)))
+  (vm-load '((DIV 2 :R1)))
   (vm-exec)
   (if (eq (get 'vm :R1) 5)
       (progn
@@ -208,7 +207,7 @@
   ;; Cas où src est un registre
   (make-vm)
   (setf (get 'vm :R1) 10 (get 'vm :R2) 2)
-  (vm-load 'vm '((DIV :R2 :R1)))
+  (vm-load '((DIV :R2 :R1)))
   (vm-exec)
   (if (eq (get 'vm :R1) 5)
       (progn
@@ -219,7 +218,7 @@
 (defun test-exec-jmp ()
   (make-vm)
   (setf (get 'vm :R1) 0)
-  (vm-load 'vm '((JMP label1)(MOVE 1 :R1)(LABEL label1)))
+  (vm-load '((JMP label1)(MOVE 1 :R1)(LABEL label1)))
   (vm-exec)
   (if (= (get 'vm :R1) 0)
       (progn
@@ -233,7 +232,7 @@
     (setf (get 'vm :R1) 0)
     (setf (get 'vm :GT) 1)
 
-    (vm-load 'vm '((JGT label1)(MOVE 1 :R1)(LABEL label1)))
+    (vm-load '((JGT label1)(MOVE 1 :R1)(LABEL label1)))
     (vm-exec)
     (if (= (get 'vm :R1) 0)
         (progn
@@ -245,7 +244,7 @@
     (setf (get 'vm :R1) 0)
     (setf (get 'vm :GT) 0)
 
-    (vm-load 'vm '((JGT label1)(MOVE 1 :R1)(LABEL label1)))
+    (vm-load '((JGT label1)(MOVE 1 :R1)(LABEL label1)))
     (vm-exec)
     (if (= (get 'vm :R1) 1)
         (progn
@@ -261,7 +260,7 @@
     (setf (get 'vm :R1) 0)
     (setf (get 'vm :GT) 1)
 
-    (vm-load 'vm '((JGE label1)(MOVE 1 :R1)(LABEL label1)))
+    (vm-load '((JGE label1)(MOVE 1 :R1)(LABEL label1)))
     (vm-exec)
     (if (= (get 'vm :R1) 0)
         (progn
@@ -273,7 +272,7 @@
     (setf (get 'vm :R1) 0)
     (setf (get 'vm :EQ) 1)
 
-    (vm-load 'vm '((JGE label1)(MOVE 1 :R1)(LABEL label1)))
+    (vm-load '((JGE label1)(MOVE 1 :R1)(LABEL label1)))
     (vm-exec)
     (if (= (get 'vm :R1) 0)
         (progn
@@ -286,7 +285,7 @@
     (setf (get 'vm :GT) 0)
     (setf (get 'vm :EQ) 0)
 
-    (vm-load 'vm '((JGE label1)(MOVE 1 :R1)(LABEL label1)))
+    (vm-load '((JGE label1)(MOVE 1 :R1)(LABEL label1)))
     (vm-exec)
     (if (= (get 'vm :R1) 1)
         (progn
@@ -301,7 +300,7 @@
     (setf (get 'vm :R1) 0)
     (setf (get 'vm :LT) 1)
 
-    (vm-load 'vm '((JLT label1)(MOVE 1 :R1)(LABEL label1)))
+    (vm-load '((JLT label1)(MOVE 1 :R1)(LABEL label1)))
     (vm-exec)
     (if (= (get 'vm :R1) 0)
         (progn
@@ -313,7 +312,7 @@
     (setf (get 'vm :R1) 0)
     (setf (get 'vm :LT) 0)
 
-    (vm-load 'vm '((JLT label1)(MOVE 1 :R1)(LABEL label1)))
+    (vm-load '((JLT label1)(MOVE 1 :R1)(LABEL label1)))
     (vm-exec)
     (if (= (get 'vm :R1) 1)
         (progn
@@ -327,7 +326,7 @@
     (setf (get 'vm :R1) 0)
     (setf (get 'vm :LT) 1)
 
-    (vm-load 'vm '((JLE label1)(MOVE 1 :R1)(LABEL label1)))
+    (vm-load '((JLE label1)(MOVE 1 :R1)(LABEL label1)))
     (vm-exec)
     (if (= (get 'vm :R1) 0)
         (progn
@@ -339,7 +338,7 @@
     (setf (get 'vm :R1) 0)
     (setf (get 'vm :EQ) 1)
 
-    (vm-load 'vm '((JLE label1)(MOVE 1 :R1)(LABEL label1)))
+    (vm-load '((JLE label1)(MOVE 1 :R1)(LABEL label1)))
     (vm-exec)
     (if (= (get 'vm :R1) 0)
         (progn
@@ -352,7 +351,7 @@
     (setf (get 'vm :LT) 0)
     (setf (get 'vm :EQ) 0)
 
-    (vm-load 'vm '((JLE label1)(MOVE 1 :R1)(LABEL label1)))
+    (vm-load '((JLE label1)(MOVE 1 :R1)(LABEL label1)))
     (vm-exec)
     (if (= (get 'vm :R1) 1)
         (progn
@@ -367,7 +366,7 @@
     (make-vm)
     (setf (get 'vm :R1) 0)
     (setf (get 'vm :EQ) 1)
-    (vm-load 'vm '((JEQ label1)(MOVE 1 :R1)(LABEL label1)))
+    (vm-load '((JEQ label1)(MOVE 1 :R1)(LABEL label1)))
     (vm-exec)
     (if (= (get 'vm :R1) 0)
         (progn
@@ -378,7 +377,7 @@
     (make-vm)
     (setf (get 'vm :R1) 0)
     (setf (get 'vm :EQ) 0)
-    (vm-load 'vm '((JEQ label1)(MOVE 1 :R1)(LABEL label1)))
+    (vm-load '((JEQ label1)(MOVE 1 :R1)(LABEL label1)))
     (vm-exec)
     (if (= (get 'vm :R1) 1)
         (progn
@@ -391,7 +390,7 @@
     ;;Test que le saut s'effectue bien et que l'adresse de retour est sur la pile
     (make-vm)
     (setf (get 'vm :R1) 0)
-    (vm-load 'vm '((JSR label1)(MOVE 1 :R1)(LABEL label1)))
+    (vm-load '((JSR label1)(MOVE 1 :R1)(LABEL label1)))
     (vm-exec)
     (if (and (= (get 'vm :R1) 0) (= (get-from-vm-mem 'vm (- (get 'vm :SP) 1 )) (get 'vm :startCode)))
         (progn
@@ -404,7 +403,7 @@
 (defun test-exec-rtn ()
     ;;Test d'un cas typique d'appel de fonction avec RTN
     (make-vm)
-    (vm-load 'vm '((JMP finfonction1)(LABEL fonction1)(MOVE 1 :R1)(RTN)(LABEL inateignable)(MOVE 1 :R2)(LABEL finfonction1)(JSR fonction1)(MOVE 1 :R3)))
+    (vm-load '((JMP finfonction1)(LABEL fonction1)(MOVE 1 :R1)(RTN)(LABEL inateignable)(MOVE 1 :R2)(LABEL finfonction1)(JSR fonction1)(MOVE 1 :R3)))
     (vm-exec)
     (if (and (and (= (get 'vm :R1) 1) (= (get 'vm :R2) 0)) (= (get 'vm :R3) 1) )
             (progn
@@ -417,7 +416,7 @@
 (defun test-exec-push ()
   ;; Cas où src est un littéral
   (make-vm)
-  (vm-load 'vm '((PUSH 3)))
+  (vm-load '((PUSH 3)))
   (vm-exec)
   (if (eq (get-from-vm-mem 'vm (- (get 'vm :SP) 1)) 3)
       (progn
@@ -427,7 +426,7 @@
   ;; Cas où src est un registre
   (make-vm)
   (setf (get 'vm :R1) 3)
-  (vm-load 'vm '((PUSH :R1)))
+  (vm-load '((PUSH :R1)))
   (vm-exec)
   (if (eq (get-from-vm-mem 'vm (- (get 'vm :SP) 1)) 3)
       (progn
@@ -438,7 +437,7 @@
 
 (defun test-exec-pop ()
   (make-vm)
-  (vm-load 'vm '((PUSH 3)(POP :R1)))
+  (vm-load '((PUSH 3)(POP :R1)))
   (vm-exec)
   (if (= (get 'vm :R1) 3) 
       (progn
@@ -449,167 +448,167 @@
 (defun test-exec-cmp ()
   ;; Cas où le premier argument est inférieur au second (littéraux)
   (make-vm)
-  (vm-load 'vm '((CMP 3 5)))
+  (vm-load '((CMP 3 5)))
   (vm-exec)
-  (if (and (= (get 'vm :FEQ) 0)
-          (= (get 'vm :FLT) 1)
-          (= (get 'vm :FGT) 0))
+  (if (and (= (get 'vm :EQ) 0)
+          (= (get 'vm :LT) 1)
+          (= (get 'vm :GT) 0))
       (progn
         (increment-test-count)
         (format t "~%Test 'CMP 3 5 (inférieur, littéraux)' réussi.~%"))
-      (format t "~%Test 'CMP 3 5 (inférieur, littéraux)' échoué, FEQ: ~A, FLT: ~A, FGT: ~A.~%" 
-              (get 'vm :FEQ) (get 'vm :FLT) (get 'vm :FGT)))
+      (format t "~%Test 'CMP 3 5 (inférieur, littéraux)' échoué, EQ: ~A, LT: ~A, GT: ~A.~%" 
+              (get 'vm :EQ) (get 'vm :LT) (get 'vm :GT)))
   ;; Cas où le premier argument est inférieur au second (registres)
   (make-vm)
   (setf (get 'vm :R1) 5 (get 'vm :R2) 10)
-  (vm-load 'vm '((CMP :R1 :R2)))
+  (vm-load '((CMP :R1 :R2)))
   (vm-exec)
-  (if (and (= (get 'vm :FEQ) 0)
-          (= (get 'vm :FLT) 1)
-          (= (get 'vm :FGT) 0))
+  (if (and (= (get 'vm :EQ) 0)
+          (= (get 'vm :LT) 1)
+          (= (get 'vm :GT) 0))
       (progn
         (increment-test-count)
         (format t "~%Test 'CMP :R1 :R2 (inférieur, registres)' réussi.~%"))
-      (format t "~%Test 'CMP :R1 :R2 (inférieur, registres)' échoué, FEQ: ~A, FLT: ~A, FGT: ~A.~%" 
-              (get 'vm :FEQ) (get 'vm :FLT) (get 'vm :FGT)))
+      (format t "~%Test 'CMP :R1 :R2 (inférieur, registres)' échoué, EQ: ~A, LT: ~A, GT: ~A.~%" 
+              (get 'vm :EQ) (get 'vm :LT) (get 'vm :GT)))
   ;; Cas où le premier argument est un littéral inférieur au second un registre
   (make-vm)
   (setf (get 'vm :R2) 10)
-  (vm-load 'vm '((CMP 5 :R2)))
+  (vm-load '((CMP 5 :R2)))
   (vm-exec)
-  (if (and (= (get 'vm :FEQ) 0)
-          (= (get 'vm :FLT) 1)
-          (= (get 'vm :FGT) 0))
+  (if (and (= (get 'vm :EQ) 0)
+          (= (get 'vm :LT) 1)
+          (= (get 'vm :GT) 0))
       (progn
         (increment-test-count)
         (format t "~%Test 'CMP 5 :R2 (inférieur, littéral et registre)' réussi.~%"))
-      (format t "~%Test 'CMP 5 :R2 (inférieur, littéral et registre)' échoué, FEQ: ~A, FLT: ~A, FGT: ~A.~%" 
-              (get 'vm :FEQ) (get 'vm :FLT) (get 'vm :FGT)))
+      (format t "~%Test 'CMP 5 :R2 (inférieur, littéral et registre)' échoué, EQ: ~A, LT: ~A, GT: ~A.~%" 
+              (get 'vm :EQ) (get 'vm :LT) (get 'vm :GT)))
   ;; Cas où le premier argument est un registre inférieur au second un littéral
   (make-vm)
   (setf (get 'vm :R2) 5)
-  (vm-load 'vm '((CMP :R2 15)))
+  (vm-load '((CMP :R2 15)))
   (vm-exec)
-  (if (and (= (get 'vm :FEQ) 0)
-          (= (get 'vm :FLT) 1)
-          (= (get 'vm :FGT) 0))
+  (if (and (= (get 'vm :EQ) 0)
+          (= (get 'vm :LT) 1)
+          (= (get 'vm :GT) 0))
       (progn
         (increment-test-count)
         (format t "~%Test 'CMP :R2 15 (inférieur, registre et littéral)' réussi.~%"))
-      (format t "~%Test 'CMP :R2 15 (inférieur, registre et littéral)' échoué, FEQ: ~A, FLT: ~A, FGT: ~A.~%" 
-              (get 'vm :FEQ) (get 'vm :FLT) (get 'vm :FGT)))
+      (format t "~%Test 'CMP :R2 15 (inférieur, registre et littéral)' échoué, EQ: ~A, LT: ~A, GT: ~A.~%" 
+              (get 'vm :EQ) (get 'vm :LT) (get 'vm :GT)))
   ;; Cas où le premier argument est supérieur au second (littéraux)
   (make-vm)
-  (vm-load 'vm '((CMP 5 3)))
+  (vm-load '((CMP 5 3)))
   (vm-exec)
-  (if (and (= (get 'vm :FEQ) 0)
-          (= (get 'vm :FLT) 0)
-          (= (get 'vm :FGT) 1))
+  (if (and (= (get 'vm :EQ) 0)
+          (= (get 'vm :LT) 0)
+          (= (get 'vm :GT) 1))
       (progn
         (increment-test-count)
         (format t "~%Test 'CMP 5 3 (supérieur, littéraux)' réussi.~%"))
-      (format t "~%Test 'CMP 5 3 (supérieur, littéraux)' échoué, FEQ: ~A, FLT: ~A, FGT: ~A.~%" 
-              (get 'vm :FEQ) (get 'vm :FLT) (get 'vm :FGT)))
+      (format t "~%Test 'CMP 5 3 (supérieur, littéraux)' échoué, EQ: ~A, LT: ~A, GT: ~A.~%" 
+              (get 'vm :EQ) (get 'vm :LT) (get 'vm :GT)))
   ;; Cas où le premier argument est supérieur au second (registres)
   (make-vm)
   (setf (get 'vm :R1) 10 (get 'vm :R2) 5)
-  (vm-load 'vm '((CMP :R1 :R2)))
+  (vm-load '((CMP :R1 :R2)))
   (vm-exec)
-  (if (and (= (get 'vm :FEQ) 0)
-          (= (get 'vm :FLT) 0)
-          (= (get 'vm :FGT) 1))
+  (if (and (= (get 'vm :EQ) 0)
+          (= (get 'vm :LT) 0)
+          (= (get 'vm :GT) 1))
       (progn
         (increment-test-count)
         (format t "~%Test 'CMP :R1 :R2 (supérieur, registres)' réussi.~%"))
-      (format t "~%Test 'CMP :R1 :R2 (supérieur, registres)' échoué, FEQ: ~A, FLT: ~A, FGT: ~A.~%" 
-              (get 'vm :FEQ) (get 'vm :FLT) (get 'vm :FGT)))
+      (format t "~%Test 'CMP :R1 :R2 (supérieur, registres)' échoué, EQ: ~A, LT: ~A, GT: ~A.~%" 
+              (get 'vm :EQ) (get 'vm :LT) (get 'vm :GT)))
   ;; Cas où le premier argument registre est supérieur au second littéral
   (make-vm)
   (setf (get 'vm :R1) 7)
-  (vm-load 'vm '((CMP :R1 5)))
+  (vm-load '((CMP :R1 5)))
   (vm-exec)
-  (if (and (= (get 'vm :FEQ) 0)
-          (= (get 'vm :FLT) 0)
-          (= (get 'vm :FGT) 1))
+  (if (and (= (get 'vm :EQ) 0)
+          (= (get 'vm :LT) 0)
+          (= (get 'vm :GT) 1))
       (progn
         (increment-test-count)
         (format t "~%Test 'CMP :R1 5 (supérieur, registre et littéral)' réussi.~%"))
-      (format t "~%Test 'CMP :R1 5 (supérieur, registre et littéral)' échoué, FEQ: ~A, FLT: ~A, FGT: ~A.~%" 
-              (get 'vm :FEQ) (get 'vm :FLT) (get 'vm :FGT)))
+      (format t "~%Test 'CMP :R1 5 (supérieur, registre et littéral)' échoué, EQ: ~A, LT: ~A, GT: ~A.~%" 
+              (get 'vm :EQ) (get 'vm :LT) (get 'vm :GT)))
 ;; Cas où le premier argument littéral est supérieur au second registre
   (make-vm)
   (setf (get 'vm :R1) 5)
-  (vm-load 'vm '((CMP 10 :R1)))
+  (vm-load '((CMP 10 :R1)))
   (vm-exec)
-  (if (and (= (get 'vm :FEQ) 0)
-          (= (get 'vm :FLT) 0)
-          (= (get 'vm :FGT) 1))
+  (if (and (= (get 'vm :EQ) 0)
+          (= (get 'vm :LT) 0)
+          (= (get 'vm :GT) 1))
       (progn
         (increment-test-count)
         (format t "~%Test 'CMP 10 :R1 (supérieur, littéral et registre)' réussi.~%"))
-      (format t "~%Test 'CMP 10 :R1 (supérieur, littéral et registre)' échoué, FEQ: ~A, FLT: ~A, FGT: ~A.~%" 
-              (get 'vm :FEQ) (get 'vm :FLT) (get 'vm :FGT)))
+      (format t "~%Test 'CMP 10 :R1 (supérieur, littéral et registre)' échoué, EQ: ~A, LT: ~A, GT: ~A.~%" 
+              (get 'vm :EQ) (get 'vm :LT) (get 'vm :GT)))
 
   ;; Cas où les deux arguments sont égaux (littéraux)
   (make-vm)
-  (vm-load 'vm '((CMP 5 5)))
+  (vm-load '((CMP 5 5)))
   (vm-exec)
-  (if (and (= (get 'vm :FEQ) 1)
-          (= (get 'vm :FLT) 0)
-          (= (get 'vm :FGT) 0))
+  (if (and (= (get 'vm :EQ) 1)
+          (= (get 'vm :LT) 0)
+          (= (get 'vm :GT) 0))
       (progn
         (increment-test-count)
         (format t "~%Test 'CMP 5 5 (égalité, littéraux)' réussi.~%"))
-      (format t "~%Test 'CMP 5 5 (égalité, littéraux)' échoué, FEQ: ~A, FLT: ~A, FGT: ~A.~%" 
-              (get 'vm :FEQ) (get 'vm :FLT) (get 'vm :FGT)))
+      (format t "~%Test 'CMP 5 5 (égalité, littéraux)' échoué, EQ: ~A, LT: ~A, GT: ~A.~%" 
+              (get 'vm :EQ) (get 'vm :LT) (get 'vm :GT)))
 
   ;; Cas où les deux arguments sont égaux (registres)
   (make-vm)
   (setf (get 'vm :R1) 10 (get 'vm :R2) 10)
-  (vm-load 'vm '((CMP :R1 :R2)))
+  (vm-load '((CMP :R1 :R2)))
   (vm-exec)
-  (if (and (= (get 'vm :FEQ) 1)
-          (= (get 'vm :FLT) 0)
-          (= (get 'vm :FGT) 0))
+  (if (and (= (get 'vm :EQ) 1)
+          (= (get 'vm :LT) 0)
+          (= (get 'vm :GT) 0))
       (progn
         (increment-test-count)
         (format t "~%Test 'CMP :R1 :R2 (égalité, registre et registre)' réussi.~%"))
-      (format t "~%Test 'CMP :R1 :R2 (égalité, registre et registre)' échoué, FEQ: ~A, FLT: ~A, FGT: ~A.~%" 
-              (get 'vm :FEQ) (get 'vm :FLT) (get 'vm :FGT)))
+      (format t "~%Test 'CMP :R1 :R2 (égalité, registre et registre)' échoué, EQ: ~A, LT: ~A, GT: ~A.~%" 
+              (get 'vm :EQ) (get 'vm :LT) (get 'vm :GT)))
 
   ;; Cas où le premier argument est un littéral et le second un registre (égalité)
   (make-vm)
   (setf (get 'vm :R1) 5)
-  (vm-load 'vm '((CMP 5 :R1)))
+  (vm-load '((CMP 5 :R1)))
   (vm-exec)
-  (if (and (= (get 'vm :FEQ) 1)
-          (= (get 'vm :FLT) 0)
-          (= (get 'vm :FGT) 0))
+  (if (and (= (get 'vm :EQ) 1)
+          (= (get 'vm :LT) 0)
+          (= (get 'vm :GT) 0))
       (progn
         (increment-test-count)
         (format t "~%Test 'CMP 5 :R1 (égalité, littéral et registre)' réussi.~%"))
-      (format t "~%Test 'CMP 5 :R1 (égalité, littéral et registre)' échoué, FEQ: ~A, FLT: ~A, FGT: ~A.~%" 
-              (get 'vm :FEQ) (get 'vm :FLT) (get 'vm :FGT)))
+      (format t "~%Test 'CMP 5 :R1 (égalité, littéral et registre)' échoué, EQ: ~A, LT: ~A, GT: ~A.~%" 
+              (get 'vm :EQ) (get 'vm :LT) (get 'vm :GT)))
 
   ;; Cas où le premier argument est un registre et le second un littéral (égalité)
   (make-vm)
   (setf (get 'vm :R1) 7)
-  (vm-load 'vm '((CMP :R1 7)))
+  (vm-load '((CMP :R1 7)))
   (vm-exec)
-  (if (and (= (get 'vm :FEQ) 1)
-          (= (get 'vm :FLT) 0)
-          (= (get 'vm :FGT) 0))
+  (if (and (= (get 'vm :EQ) 1)
+          (= (get 'vm :LT) 0)
+          (= (get 'vm :GT) 0))
       (progn
         (increment-test-count)
         (format t "~%Test 'CMP :R1 7 (égalité, registre et littéral)' réussi.~%"))
-      (format t "~%Test 'CMP :R1 7 (égalité, registre et littéral)' échoué, FEQ: ~A, FLT: ~A, FGT: ~A.~%" 
-              (get 'vm :FEQ) (get 'vm :FLT) (get 'vm :FGT)))
+      (format t "~%Test 'CMP :R1 7 (égalité, registre et littéral)' échoué, EQ: ~A, LT: ~A, GT: ~A.~%" 
+              (get 'vm :EQ) (get 'vm :LT) (get 'vm :GT)))
 
 )
 
 (defun test-exec-funcall ()
   (make-vm)
-  (vm-load 'vm '((PUSH 3) (PUSH (1 2 3 4 5)) (MOVE :SP :FP) (PUSH 2)  (FUNCALL member)))
+  (vm-load '((PUSH 3) (PUSH (1 2 3 4 5)) (MOVE :SP :FP) (PUSH 2)  (FUNCALL member)))
   (vm-exec)
   (vm-print)
   (if (equal (get 'vm :R0) '(3 4 5))
@@ -618,7 +617,7 @@
       (format t "~%Test 'FUNCALL member avec 3 (1 2 3 4 5) sur la pile' réussi.~%"))
     (format t "~%Test 'FUNCALL member avec 3 (1 2 3 4 5) sur la pile' échoué, valeur attendue : (3 4 5), obtenue : ~A.~%" (get 'vm :R1)))
   (make-vm)
-  (vm-load 'vm '((PUSH (1 2 3 4 5)) (MOVE :SP :FP) (PUSH 1)  (FUNCALL car)))
+  (vm-load '((PUSH (1 2 3 4 5)) (MOVE :SP :FP) (PUSH 1)  (FUNCALL car)))
   (vm-exec)
   (vm-print)
   (if (eql (get 'vm :R0) 1)
@@ -627,8 +626,9 @@
       (format t "~%Test 'FUNCALL car avec (1 2 3 4 5) sur la pile' réussi.~%"))
     (format t "~%Test 'FUNCALL car avec (1 2 3 4 5) sur la pile' échoué, valeur attendue : (3 4 5), obtenue : ~A.~%" (get 'vm :R1)))
 )
-(defun test-recurs ()
+(defun test ()
   (make-vm)
-  (vm-load 'vm '())
+  (vm-load '((MOVE T :R0)))
   (vm-exec)
+  (vm-print)
 )
