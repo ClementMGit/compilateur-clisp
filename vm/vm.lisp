@@ -1,6 +1,6 @@
 (require "debug.lisp")
 
-(defun make-vm (&optional (vm 'vm) (size 1000))
+(defun make-vm (&optional (debug T) (vm 'vm) (size 1000))
   "Création d'une machine virtuelle"
   ;; On affecte a chaque propriéte/registre un nom et une valeur initiale
   (setf(get vm :nomvm) vm)
@@ -22,7 +22,7 @@
   (setf(get vm :EQ) 0)
   (setf(get vm :GT) 0)
   (setf(get vm :LT) 0)
-  ;;Max stack, fin de la pile, vers 75% de la taille de la mémoire
+  ;;Max stack, fin de la pile, vers 50% de la taille de la mémoire
   (setf(get vm :maxStack) (floor (* size 0.50)))
   ;;Start Code, début de la zone de code juste après la fin de la pile
   (setf(get vm :startCode) (+ 1 (get vm :maxStack)))
@@ -34,17 +34,15 @@
   ;;Hash tables pour la résolution d'étiquettes
   (setf(get vm :knownLabels) (make-hash-table))
   (setf(get vm :unknownLabels) (make-hash-table))
-  (setf)
   ;;Affichage de l'état initial de la VM
-  (vm-print vm)
+  (if debug (vm-print vm))
 )
-(defun vm-load (asm &optional (vm 'vm))
-  (print "Chargement du code en mémoire...")
+(defun vm-load (asm &optional (debug T) (vm 'vm))
+  (format t "-------------Chargement du code en mémoire-------------")
   (loop
     while (not (atom asm))
     do
-    (format t "~%Chargement de ")
-    (print (car asm))
+    (format t "~%Chargement de ~A" (car asm))
     ;;On met l'instruction assembleur courante dans R0
     (exec-move vm (car asm) :R0)
     ;;On stocke l'instruction à l'adresse mémoire du LOAD COUNTER courant
@@ -66,7 +64,7 @@
   (resolve-jumps vm)
   (exec-move vm '(HALT) :R0)
   (exec-store vm :R0 (get vm :LC))  
-  (vm-print vm)
+  (if debug (vm-print vm))
   '(Code chargé en mémoire !)
 )
 (defun resolve-jumps (vm)
@@ -87,7 +85,6 @@
             (set-to-vm-mem vm indexDuJump (list 'FUNCALL label)))))
           )
   (get vm :unknownLabels))
-
 )
 (defun exec-instr (vm instr)
   "Exécute l'instruction passée en paramètre"

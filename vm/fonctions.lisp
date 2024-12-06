@@ -15,9 +15,10 @@
   )
 )
 (defun exec-store (vm src dest)
-  "Stocke la valeur du registre src à l'adresse(registre ou littéral) dest en mémoire"
-  (let ((destination (if (symbolp dest) (get vm dest) dest))) 
-    (set-to-vm-mem vm destination (get vm src))
+  "Stocke la valeur du (registre ou littéral) src à l'adresse(registre ou littéral) dest en mémoire"
+  (let ((destination (if (symbolp dest) (get vm dest) dest)) 
+        (value (if (symbolp src) (get vm src) src))) 
+    (set-to-vm-mem vm destination value)
   )
 )
 (defun exec-load (vm src dest)
