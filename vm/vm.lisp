@@ -6,7 +6,9 @@
   (setf(get vm :nomvm) vm)
   (setf(get vm :size) size)
   (setf(get vm :RUNNING) nil)
-  (setf(get vm 'T) T);Permet d'autoriser un MOVE T R0 par exemple, sans trop modifier de code
+  ;(setf(get vm 'T) 1);Permet d'autoriser un MOVE T R0 par exemple, sans trop modifier de code
+  ;(setf(get vm 'NIL) 0);Permet d'autoriser un MOVE NIL R0 par exemple, sans trop modifier de code
+
   ;;Registres R0 à R3
   (setf(get vm :R0) 0)
   (setf(get vm :R1) 0)
@@ -17,7 +19,7 @@
   ;;Stack pointer, pointeur pile actuel
   (setf(get vm :SP) 50)
   ;;Frame pointer, pointe sur le nb arguments de la fonction empilé
-  (setf(get vm :FP) 0)
+  (setf(get vm :FP) 50)
   ;;Drapeaux Equal, plus grand, plus petit -> pour les cmp
   (setf(get vm :EQ) 0)
   (setf(get vm :GT) 0)
@@ -118,7 +120,7 @@
     )
   )
 )
-(defun vm-exec (&optional (vm 'vm))
+(defun vm-exec (&optional (debug NIL) (vm 'vm))
   "Exécute le code présent en mémoire de la VM"
   (setf(get vm :RUNNING) t)
   ;; Tant que la vm tourne on execute les instructions
@@ -129,6 +131,7 @@
     (exec-instr vm instr)
     ;;On incrémente le PC
     (exec-incr vm :PC)
+    (if debug (vm-print vm))
     )
   )
 )

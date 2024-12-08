@@ -1,19 +1,143 @@
-(defun compilation (expr)
-  (cond
-    ((atom expr) (compile-lit expr))
-    ((eql (car expr) 'if) (compile-if expr))
-    ((member (car expr) '(< > = <= >= )) (compile-comp expr))
-    ((member (car expr) '(+ - * /)) (compile-op expr))
-    ;((is-cas exp 'and) (compilation-and arg (gensym "finAnd")))
-    ;((is-cas exp 'or) (compilation-or arg (gensym "finOr")))
+(defun compilation (expr env)
+  (if (atom expr)
+    (compile-lit expr env)
+    (let ((first-symbol (car expr)))
+      (cond
+      ((eql first-symbol 'let) (compile-let expr env))
+      ((eql first-symbol 'if) (compile-if expr env))
+      ((eql first-symbol 'loop) (compile-while expr env))
+      ((eql first-symbol 'setq) (compile-setq expr env))
+      ((eql first-symbol 'cond) (compile-cond (cdr expr) (gensym "fincond") env))
+
+      ((eql first-symbol 'progn) (compile-progn (cdr expr) env))
+      ((member first-symbol '(< > = <= >= )) (compile-comp expr env))
+      ((member first-symbol '(+ - * /)) (compile-op expr env))
+      )
+    )
   )
 )
-(defun compile-op (expr)
+(defun compile-cond (expr etiq-fin env)
+  "Compile un cond de la forme (cond ((test1) (expr1)) ((test2) (expr2)) )"
+  (if (null expr)
+    `((LABEL ,etiq-fin));Fin du cond 
+    (let ((etiq-cond (gensym "cond")))                              
+        (append (
+          compilation (caar expr) env);Compilation de la condition             
+          '((CMP :R0 0))                                
+          `((JEQ ,etiq-cond))                             
+          (compilation (cadar expr) env)              
+          `((JMP ,etiq-fin))                               
+          `((LABEL ,etiq-cond))                                    
+          (compile-cond (cdr expr) etiq-fin env))
+    )
+  )
+)
+(defun compile-progn (expr env)
+  (if (null expr) 
+    ()
+    (append (compilation (car expr) env) (compile-progn (cdr expr) env))
+  )
+)
+(defun compile-setq (expr env)
+  "Compile une expression setq de la forme (setq variable nouvelle-valeur)"
+  (let ((variable-local (assoc (second expr) env)))  ; Recherche de la variable dans l'environnement
+    (if variable-local  ; Si la variable est déjà locale
+        (append 
+         `((MOVE :FP :R1))                      ; Charge le pointeur de cadre (FP) dans R1.
+         `((ADD ,(cdr variable-local) :R1))      ; Déduit la position de la variable dans la pile.
+         '((PUSH :R1))
+         (compilation (third expr) env)          ; Compiler la valeur à affecter
+         '((POP :R1))
+         '((STORE :R0 :R1)))                     ; Déplacer la valeur dans la variable locale
+      (progn
+        (format t "var globale, cas non traité pour l'instant")
+        ;; Si la variable n'est pas trouvée, ajoute-la à l'environnement local
+        (setq env (cons (cons (second expr) (length env)) env))  ; Ajouter la variable à l'environnement
+        (append 
+         `((MOVE :FP :R1))                      ; Charge le pointeur de cadre (FP) dans R1.
+         `((ADD ,(length env) :R1))  ; Déduit la position de la variable dans la pile
+          '((PUSH :R1))
+         (compilation (third expr) env)          ; Compiler la valeur à affecter
+         '((POP :R1))
+
+         '((STORE :R0 :R1)))                     ; Déplacer la valeur dans la variable locale
+      )
+    ) 
+  )
+)
+
+
+(defun compile-let (expr env)
+  "Compile une expression LET, en gérant les variables locales et leur environnement."
+  (let* ((bindings (second expr))        ; Les bindings locaux dans le let
+         (updated-env env)            ; Environnement mis à jour après ajout des variables locales
+         (setup-code '())             ; Code pour initialiser les variables locales
+         (teardown-code '())         ; Code pour nettoyer après le let
+         (i 0))
+    ;; Initialisation des variables locales et mise à jour de l'environnement
+    (loop while (< i (length bindings)) do
+      (let* ((binding (nth i bindings))     ; Chaque binding
+             (var-name (first binding))      ; Nom de la variable
+             (var-init (second binding)))    ; Valeur initiale de la variable
+        ;On ajoute a l'env une nouvelle association (nom_de_variable decalage_dans_la_pile)
+        (setq updated-env (cons (cons var-name (length updated-env)) updated-env))
+        ;; Compiler la valeur initiale et empiler
+        (setq setup-code
+              (append setup-code
+                      (compilation var-init env)
+                      '((PUSH :R0))))
+      )
+      (setq i (+ i 1)); Incrémenter l'indice
+    )  
+    ;; Générer le code pour dépiler les variables locales à la fin
+    (setq i 0)  ; Réinitialisation du compteur
+    (loop while (< i (length bindings)) do
+      (setq teardown-code
+            (append teardown-code '((POP :R1))))
+      (setq i (1+ i)))  ; Incrémenter l'indice
+    ;; Combiner tout le code : initialisation, corps, nettoyage
+    (append setup-code (compilation (third expr) updated-env) teardown-code)
+  )
+)
+(defun compile-lit (expr env)
+  "Compilation d'un littéral-> variable local ou TODO globale, constante"
+  (let ((variable-local (assoc expr env)));(x décalage_de_x_dans_la_pile) par exemple
+    ;(format t "~%env : ~A ~%" env)
+    ;(format t "~%variable local : ~A~%" variable-local)
+    (if variable-local;Si c'est une variable locale
+      (append
+          `((MOVE :FP :R0));Charge le pointeur de cadre (FP) dans R0.
+          `((ADD  ,(cdr variable-local) :R0)); Déduit la position de la variable dans la pile.
+          `((LOAD :R0 :R0))                         ;; Charge la valeur de la variable à partir de l'adresse calculée.
+      )   
+      (if (null expr)
+        '((MOVE 0 :R0));Compilation de NIL
+        `((MOVE ,expr :R0));Compilation d'une constante
+      )
+    )
+  )
+)
+(defun compile-while (expr env)
+  "Compile une boucle de la forme (loop while <condition> do <instructions>)"
+  (let ((etiq-fin (gensym "finwhile"))
+	      (etiq-boucle (gensym "while"))) 
+    (append 
+      `((LABEL ,etiq-boucle))
+      (compilation (third expr) env);Compilation de la condition
+      '((CMP :R0 0));Si la condition du while est/devient fausse 
+      `((JEQ ,etiq-fin));on sort de la boucle
+      (compilation (fifth expr) env);Compilation de l'intérieur du while
+      `((JMP ,etiq-boucle));on continue de boucler
+      `((LABEL ,etiq-fin))
+    )
+  )
+)
+(defun compile-op (expr env)
   "Compile une opération de la forme (op expr1 expr2) où op est parmi {+,-,*,/}"
   (append 
-		(compilation (second expr));Compile expr1 et met le résultat dans R0
+		(compilation (second expr) env);Compile expr1 et met le résultat dans R0
     '((PUSH :R0));On empile R0
-    (compilation (third expr));Compile expr2 et met le résultat dans R0
+    (compilation (third expr) env);Compile expr2 et met le résultat dans R0
     '((PUSH :R0))
 		'((POP :R1));On récupère le résultat des nos 2 expressions compilées
 		'((POP :R0))
@@ -25,18 +149,19 @@
   )
 )
 
-(defun compile-comp (expr)
-  "Compile une comparaison de la forme (op expr1 exp2) où op est parmi {=,>,<,>=,<=}"
+(defun compile-comp (expr env)
+  "Compile une comparaison de la forme (op expr1 exp2) où op est parmi {=,>,<,>=,<=}
+  Le résultat de la comparaison est 0(->false) ou 1(->true) dans R0"
   (let ((etiq-fin (gensym "finTest")))
     (append 
-        (compilation (second expr));On compile la première partie de la comparaison
+        (compilation (second expr) env);On compile la première partie de la comparaison
         '((PUSH :R0));On empile R0
-        (compilation (third expr));On compile la deuxième partie de la comparaison
+        (compilation (third expr) env);On compile la deuxième partie de la comparaison
         '((PUSH :R0))
         '((POP :R1));On récupère le résultat des nos 2 expressions compilées
         '((POP :R0))
         '((CMP :R0 :R1)); On compare les deux parties de la comparaisons
-        '((MOVE T :R0)) 
+        '((MOVE 1 :R0)) 
         (case (first expr);Cas sur l'opérateur de comparaison
           ('= `((JEQ ,etiq-fin)))
           ('< `((JLT ,etiq-fin)))
@@ -45,34 +170,23 @@
           ('>= `((JGE ,etiq-fin)))
         )
         ;Cas où la condition s'avère fausse, aucun saut effectué par les J
-        '((MOVE NIL :R0))
+        '((MOVE 0 :R0))
         `((LABEL ,etiq-fin)))
   )
 )
-(defun compile-if (expr)
+(defun compile-if (expr env)
   "Compile un if statement de la forme (if condition expr-alors expr-sinon)"
   (let ((etiq-else (gensym "else"))
-	      (etiq-endif (gensym "endif"))
-        (condition (second expr))
-        (alors (third expr))
-        (sinon (fourth expr))
-        )
+	      (etiq-endif (gensym "endif")))
     (append
-    (compilation condition);Compilation de la condition du if->met le résultat dans :R0
+    (compilation (second expr) env);Compilation de la condition du if->met le résultat dans :R0
     `((CMP :R0 0))
     `((JEQ ,etiq-else));Condition fausse, JMP au sinon, ou condition vrai, on continue 
-    (compilation alors) ;Compiler le alors
+    (compilation (third expr) env) ;Compiler le alors
     `((JMP ,etiq-endif));Sauter par dessus le sinon
     `((LABEL ,etiq-else))
-    (compilation sinon);Compiler le sinon
+    (compilation (fourth expr) env);Compiler le sinon
     `((LABEL ,etiq-endif))
     )
-
-  )
-)
-(defun compile-lit (expr)
-  (if (null expr) 
-    `((MOVE 0 ,:R0));On remplace un nil par un 0 en assembleur
-    `((MOVE ,expr :R0))
   )
 )
