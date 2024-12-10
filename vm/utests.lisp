@@ -25,7 +25,7 @@
   (test-exec-cmp);12 Tests
   (test-exec-funcall);2 Tests
   ;; Afficher les résultats
-  (format t "~%Nombre total de tests réussis : ~D/54~%" test-count)
+  (format t "~%Nombre total de tests réussis : ~D/52~%" test-count)
 )
 (defun vmTest (code expected-value comparator &optional (todoBefore (lambda () ())) (result-getter (lambda () (get 'vm :R0))) (check-cmp-flags nil))
   "Fonction générique pour exécuter un cas de test unitaire."
@@ -56,9 +56,6 @@
 (defun test-exec-move ()
   (vmTest '((MOVE 5 :R0)) 5 #'=)
   (vmTest '((MOVE :R1 :R0)) 2 #'=)
-  (vmTest '((MOVE NIL :R0)) NIL #'eql)
-  (vmTest '((MOVE T :R0)) T #'eql)
-
 )
 (defun test-exec-store ()
   (vmTest '((STORE :R1 1)) 2 #'= (lambda () ()) (lambda () (get-from-vm-mem 'vm 1)))

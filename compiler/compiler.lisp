@@ -8,11 +8,71 @@
       ((eql first-symbol 'loop) (compile-while expr env))
       ((eql first-symbol 'setq) (compile-setq expr env))
       ((eql first-symbol 'cond) (compile-cond (cdr expr) (gensym "fincond") env))
-
+      ((eql first-symbol 'defun) (compile-defun expr env))
       ((eql first-symbol 'progn) (compile-progn (cdr expr) env))
       ((member first-symbol '(< > = <= >= )) (compile-comp expr env))
       ((member first-symbol '(+ - * /)) (compile-op expr env))
+      (t (compile-fcall expr env))
       )
+    )
+  )
+)
+(defun compile-defun (expr env)
+  "Compile une définition de fonction de la forme (defun nomfonction (paramètres) corps)"
+  (let ((positionPile 0)
+        (etiq-fin (gensym "findefun")))
+    (dolist (param (third expr)) ;; Itère sur chaque paramètre.
+    (setf positionPile (+ positionPile 1)) ;; Incrémente la position.
+    (setf env (acons param (- 0 positionPile) env));; Met à jour `env`.
+    ) 
+    (append 
+    `((JMP ,etiq-fin));C'est une déclaration de fonction, on ne doit pas exécuter son contenu sans passer par un jsr
+    `((LABEL ,(second expr)));Label nomfonction
+    (compilation (fourth expr) env);Compilation du corps de la fonction
+    '((RTN))
+    `((LABEL ,etiq-fin))
+    
+    )
+  )
+)
+(defun compile-fcall (expr env)
+  "Compile un appel de fonction de la forme (nomfonction arg1..argn)"
+  (let ((nom-fonction (car expr))      ;; Le nom de la fonction appelée.
+        (arguments (cdr expr))         ;; Les arguments de l'appel de fonction.
+        (nb-arguments (length (cdr expr)))) ;; Le nombre d'arguments.
+    (format t "~% Compilation de l'appel de la fonction ~S ~%" nom-fonction)
+    (format t "~% cdr expr ~S ~%" (cdr expr))
+
+    (append
+     ;; Compilation des arguments et leur empilement.
+    (apply 'append 
+      (map 'list
+      (lambda (arg)
+        (append
+         (compilation arg env); Compile chaque argument.
+         '((PUSH :R0)); Empile sa valeur
+        )
+      )
+      (reverse arguments))
+    )
+    `((PUSH ,nb-arguments)); Empile le nombre d'arguments.
+      (format t "~% Compilation de l'appel de la fonction ~S ~%" (car expr))
+    '((MOVE :FP :R1)); Sauvegarde old FP 
+    '((MOVE :SP :FP));nouveau FP doit pointer sur nb args
+    '((SUB 1 :FP))
+    ;; Calcul de l'ancien SP.
+    `((MOVE :SP :R2))
+    `((SUB ,(+ nb-arguments 1) :R2))
+    '((PUSH :R2)); Empile l'ancien SP.
+    '((PUSH :R1)); Sauvegarde old FP
+
+    `((JSR ,nom-fonction)); Appel de la fonction.
+    
+    ;; Restauration de l'état de la pile.
+    '((POP :R1)); Récupère l'ancien FP.
+    '((POP :R2)); Récupère l'ancien SP.
+    '((MOVE :R1 :FP)); Restaure le FP.
+    '((MOVE :R2 :SP)); Restaure le SP.
     )
   )
 )
@@ -102,7 +162,7 @@
 (defun compile-lit (expr env)
   "Compilation d'un littéral-> variable local ou TODO globale, constante"
   (let ((variable-local (assoc expr env)));(x décalage_de_x_dans_la_pile) par exemple
-    ;(format t "~%env : ~A ~%" env)
+    (format t "~%env : ~A ~%" env)
     ;(format t "~%variable local : ~A~%" variable-local)
     (if variable-local;Si c'est une variable locale
       (append

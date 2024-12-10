@@ -131,7 +131,7 @@
     (exec-instr vm instr)
     ;;On incrémente le PC
     (exec-incr vm :PC)
-    (if debug (vm-print vm))
+    (if debug (progn (vm-print vm) (read-line)))
     )
   )
 )

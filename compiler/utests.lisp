@@ -3,6 +3,7 @@
 (setq test-count 0)  ; Compteur global des tests réussis
 
 (defun run-tests ()
+
     (test-if);2 Tests
     (test-comparators);13 Tests
     (test-arithmetic-operators);5 Tests
@@ -11,7 +12,9 @@
     (test-setq);1 Test
     (test-while);2 Tests
     (test-cond);4 Tests
-    (format t "~%Nombre total de tests réussis : ~D/30~%" test-count)
+    (test-fonctions);5 Tests
+
+    (format t "~%Nombre total de tests réussis : ~D/35~%" test-count)
 )
 
 (defun compTest (code expected-value comparator)
@@ -19,7 +22,7 @@
   (format t "~%Test de compilation de '~A'~%" code)
   (make-vm NIL 'vm 500);VM sans affichage mémoire initial
   (vm-load (compilation code '()) T)
-  (vm-exec)
+  (vm-exec )
   (if (funcall comparator (get 'vm :R0) expected-value)
     (progn
       (setq test-count (+ test-count 1))
@@ -80,4 +83,20 @@
   ;Test de modification d'une variable locale à un let
   (compTest '(let ((counter 1))(progn (setq counter (+ counter 9)) (= counter 10))) 1 #'=)
   ;(compTest '(progn (setq counter 9) (= counter 9)) 1 #'=) var globale??
+)
+(defun test-fonctions ()
+  (compTest '(progn (defun add (x y) (+ x y))(add 1 2)) 3 #'=)
+  (compTest '(progn (defun add (x y) (+ x y))(add 8 2)) 10 #'=)
+  (compTest '(progn (defun fact (n) (if (= n 1) 1 (* n (fact (- n 1))))) (fact 6)) 720 #'=)
+  (compTest '(progn (defun add (x y) (+ x y))(add (add 6 4) 3)) 13 #'=)
+  (compTest '(progn (defun fibo (n)
+    (if (= 0 n)
+        0 
+        (if (= 1 n)
+        1
+        (+ (fibo (- n 1))(fibo (- n 2)))
+        )
+    )
+)
+(fibo 10)) 55 #'=)
 )
