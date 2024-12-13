@@ -6,9 +6,6 @@
   (setf(get vm :nomvm) vm)
   (setf(get vm :size) size)
   (setf(get vm :RUNNING) nil)
-  ;(setf(get vm 'T) 1);Permet d'autoriser un MOVE T R0 par exemple, sans trop modifier de code
-  ;(setf(get vm 'NIL) 0);Permet d'autoriser un MOVE NIL R0 par exemple, sans trop modifier de code
-
   ;;Registres R0 à R3
   (setf(get vm :R0) 0)
   (setf(get vm :R1) 0)
@@ -39,8 +36,14 @@
   ;;Affichage de l'état initial de la VM
   (if debug (vm-print vm))
 )
+(defun vm-load-file (file-name &optional (debug T) (vm 'vm))
+  (let ((file (open file-name)))   
+    (vm-load (read file nil) debug vm)
+    (close file)
+  )
+)
 (defun vm-load (asm &optional (debug T) (vm 'vm))
-  (format t "-------------Chargement du code en mémoire-------------")
+  (format t "~%-------------Chargement du code en mémoire-------------")
   (loop
     while (not (atom asm))
     do
@@ -53,11 +56,12 @@
     ;;Si le bout de code courant est un label
     (if (eq (car (get vm :R0)) 'LABEL)
         ;;On ajoute le label et son adresse à la liste des labels connus
-        (setf (gethash (second (get vm :R0)) (get vm :knownLabels)) (get vm :LC))
+        (setf (gethash (intern (symbol-name (second (get vm :R0)))) (get vm :knownLabels)) (get vm :LC))
         ;;Sinon si on croise un JMP, JSR etc quelconque, idem pour les inconnus
         (if (char= (char (symbol-name (car (get vm :R0))) 0) #\J)
             ;; Ajouter l'adresse à la liste des inconnus
-              (push (get vm :LC) (gethash (second (get vm :R0)) (get vm :unknownLabels)))))
+            (push (get vm :LC) (gethash (intern (symbol-name (second (get vm :R0)))) (get vm :unknownLabels))))
+    )
     ;;Dans tous les cas on incrémente Load counter et on passe a l'instruction assembleur suivante
     (exec-incr vm :LC)
     (setf asm (cdr asm))
@@ -76,7 +80,7 @@
 
  (maphash
   (lambda (label listdeindexes)
-    (let ((known-address (gethash label (get vm :knownLabels))))
+    (let ((known-address (gethash (intern (symbol-name label)) (get vm :knownLabels))))
       (if known-address
           ;; Si le label est connu, remplacez les adresses dans les JMP/JSR
           (dolist (indexDuJump listdeindexes)
@@ -116,7 +120,6 @@
       ('JGE (exec-jge vm arg1))
       ('JEQ (exec-jeq vm arg1))
       ('JNE (exec-jne vm arg1))
-
       ('FUNCALL (exec-funcall vm (rest instr) ))
       ('HALT (setf(get vm :RUNNING) nil))
     )

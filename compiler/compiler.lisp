@@ -20,6 +20,27 @@
     )
   )
 )
+(defun compile-fichier (file-name output-file-name)
+  "Compile un fichier .lisp en fichier .asm"
+  (let* ((file (open file-name))
+        (expr (read file nil))
+        (lisp-code '())
+        (asm-code '()))
+
+  (loop while expr do
+    (setq lisp-code (append lisp-code (list expr)))
+    (setq expr (read file nil))
+  )
+  (close file)
+  (setq asm-code (compile-progn lisp-code '() '()))
+  (with-open-file (str output-file-name
+                           :direction :output        ;; Ouvre en mode écriture.
+                           :if-exists :supersede     ;; Écrase le fichier existant.
+                           :if-does-not-exist :create) ;; Crée un fichier s'il n'existe pas.
+    (format str "~A" (write-to-string asm-code))
+  )
+  )
+)
 (defun compile-or (expr etiq-fin param-env local-var-env)
   "Compile une expression or de la forme (or expr1 expr2)"
     (if (null expr) 
