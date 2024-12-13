@@ -15,18 +15,36 @@
   )
 )
 (defun exec-store (vm src dest)
-  "Stocke la valeur du (registre ou littéral) src à l'adresse(registre ou littéral) dest en mémoire"
-  (let ((destination (if (symbolp dest) (get vm dest) dest)) 
-        (value (if (symbolp src) (get vm src) src))) 
-    (set-to-vm-mem vm destination value)
-  )
+  "Stocke la valeur du registre ou littéral src à l'adresse spécifiée par dest en mémoire.
+   Par exemple : (STORE :R0 :FP) ou (STORE :R0 (:FP -3))."
+  (let ((destination (cond
+                       ;; Si dest est un registre, récupérer son contenu comme adresse
+                       ((symbolp dest) (get vm dest))
+                       ;; Si dest est une liste du type `(:registre offset)`
+                       ((and (listp dest) (= (length dest) 2) (symbolp (first dest)) (numberp (second dest)))
+                        (+ (get vm (first dest)) (second dest)))
+                       ;; Sinon, c'est une adresse littérale ou autre valeur directe
+                       (t dest)))
+        (value (if (symbolp src) (get vm src) src))) ; Récupérer la valeur de src (registre ou littéral)
+    ;; Écrire la valeur dans la mémoire à l'adresse calculée
+    (set-to-vm-mem vm destination value))
 )
+
 (defun exec-load (vm src dest)
-  "Charge la valeur à l'adresse(registre ou littéral) src de la mémoire vers le registre dest"
-  (let ((source (if (symbolp src) (get vm src) src))) 
-  (setf(get vm dest) (get-from-vm-mem vm source))
-  )
+  "Charge la valeur à l'adresse (registre ou littéral) src de la mémoire vers le registre dest.
+   Par exemple : (LOAD :FP :R0) ou (LOAD (:FP -3) :R0)."
+  (let ((source (cond
+                  ;; Si src est un registre, récupérer sa valeur
+                  ((symbolp src) (get vm src))
+                  ;; Si src est une liste du type `(:registre offset)`
+                  ((and (listp src) (= (length src) 2) (symbolp (first src)) (numberp (second src)))
+                  (+ (get vm (first src)) (second src)))
+                  ;; Sinon, c'est une adresse littérale ou autre valeur directe
+                  (t src))))
+    ;; Charger la valeur de la mémoire et la placer dans dest
+    (setf (get vm dest) (get-from-vm-mem vm source)))
 )
+
 (defun exec-incr (vm reg)
   "Incrémente le registre reg de 1"
   (setf(get vm reg) (+ 1 (get vm reg)))
@@ -86,6 +104,11 @@
 (defun exec-jeq (vm indexToJumpTo)
   "Saut si drapeau :EQ = 1"
   (if (= (get vm :EQ) 1)
+    (setf(get vm :PC) indexToJumpTo))
+)
+(defun exec-jne (vm indexToJumpTo)
+  "Saut si drapeau :EQ = 0"
+  (if (= (get vm :EQ) 0)
     (setf(get vm :PC) indexToJumpTo))
 )
 (defun exec-jsr (vm indexToJumpTo)
@@ -159,7 +182,5 @@
     ;; Appeler la fonction avec les arguments résolus et
     ;; Stocker le résultat  dans R0
     (setf (get vm :R0) (apply func resolved-args))
-    
   )
-      
 )

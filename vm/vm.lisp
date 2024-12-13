@@ -115,12 +115,14 @@
       ('JGT (exec-jgt vm arg1))
       ('JGE (exec-jge vm arg1))
       ('JEQ (exec-jeq vm arg1))
+      ('JNE (exec-jne vm arg1))
+
       ('FUNCALL (exec-funcall vm (rest instr) ))
       ('HALT (setf(get vm :RUNNING) nil))
     )
   )
 )
-(defun vm-exec (&optional (debug NIL) (vm 'vm))
+(defun vm-exec (&optional (debug NIL) (run-step-by-step NIL) (vm 'vm))
   "Exécute le code présent en mémoire de la VM"
   (setf(get vm :RUNNING) t)
   ;; Tant que la vm tourne on execute les instructions
@@ -131,7 +133,12 @@
     (exec-instr vm instr)
     ;;On incrémente le PC
     (exec-incr vm :PC)
-    (if debug (progn (vm-print vm) (read-line)))
+    (if debug 
+      (if run-step-by-step 
+        (progn (vm-print vm) (read-line))
+        (vm-print vm)
+      )
+    )
     )
   )
 )
