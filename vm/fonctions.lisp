@@ -10,9 +10,13 @@
 ;; Fonctions d'exécution d'instruction assembleur
 (defun exec-move (vm src dest)
   "Copie la valeur de src (registre ou littéral) dans le registre dest"
-  (let ((source (if (symbolp src) (get vm src) src))) 
+  (let ((source (cond ((islitteral src) (cadr src)) ((symbolp src) (get vm src)) (t src)))) 
     (setf(get vm dest) source)
   )
+)
+(defun isLitteral (arg)
+  "Vérifie que l'argument est une liste et que son premier élément est 'LIT'"
+    (and (consp arg) (eql (car arg) 'LIT))
 )
 (defun exec-store (vm src dest)
   "Stocke la valeur du registre ou littéral src à l'adresse spécifiée par dest en mémoire.
@@ -20,12 +24,13 @@
   (let ((destination (cond
                        ;; Si dest est un registre, récupérer son contenu comme adresse
                        ((symbolp dest) (get vm dest))
-                       ;; Si dest est une liste du type `(:registre offset)`
+                       ;; Sinon, c'est une adresse littérale ou autre valeur directe
+                       ((islitteral dest) (cadr dest))
+                        ;; Si dest est une liste du type `(:registre offset)`
                        ((and (listp dest) (= (length dest) 2) (symbolp (first dest)) (numberp (second dest)))
                         (+ (get vm (first dest)) (second dest)))
-                       ;; Sinon, c'est une adresse littérale ou autre valeur directe
                        (t dest)))
-        (value (if (symbolp src) (get vm src) src))) ; Récupérer la valeur de src (registre ou littéral)
+        (value (cond ((symbolp src) (get vm src)) ((islitteral src) (cadr src)) (t src)))) ; Récupérer la valeur de src (registre ou littéral)
     ;; Écrire la valeur dans la mémoire à l'adresse calculée
     (set-to-vm-mem vm destination value))
 )
@@ -36,10 +41,12 @@
   (let ((source (cond
                   ;; Si src est un registre, récupérer sa valeur
                   ((symbolp src) (get vm src))
+                  ;; Sinon, c'est une adresse littérale ou autre valeur directe
+                  ((islitteral src) (cadr src))
                   ;; Si src est une liste du type `(:registre offset)`
                   ((and (listp src) (= (length src) 2) (symbolp (first src)) (numberp (second src)))
                   (+ (get vm (first src)) (second src)))
-                  ;; Sinon, c'est une adresse littérale ou autre valeur directe
+
                   (t src))))
     ;; Charger la valeur de la mémoire et la placer dans dest
     (setf (get vm dest) (get-from-vm-mem vm source)))
@@ -55,25 +62,25 @@
 )
 (defun exec-add (vm src dest)
   "Addition telle que dest = dest+src où src peut être un littéral ou un registre"
-  (let ((source (if (symbolp src) (get vm src) src))) 
+  (let ((source (if (symbolp src) (get vm src) (cadr src)))) 
     (setf (get vm dest) (+ source (get vm dest)))
   )
 )
 (defun exec-sub (vm src dest)
   "Soustraction telle que dest = dest-src où src peut être un littéral ou un registre"
-  (let ((source (if (symbolp src) (get vm src) src))) 
+  (let ((source (if (symbolp src) (get vm src) (cadr src)))) 
     (setf (get vm dest) (- (get vm dest) source))
   )
 )
 (defun exec-mul (vm src dest)
   "Multiplication telle que dest = dest*src où src peut être un littéral ou un registre"
-  (let ((source (if (symbolp src) (get vm src) src))) 
+  (let ((source (if (symbolp src) (get vm src) (cadr src)))) 
     (setf (get vm dest) (* (get vm dest) source))
   )
 )
 (defun exec-div (vm src dest)
   "Division telle que dest = dest/src où src peut être un littéral ou un registre"
-  (let ((source (if (symbolp src) (get vm src) src))) 
+  (let ((source (if (symbolp src) (get vm src) (cadr src)))) 
     (setf (get vm dest) (/ (get vm dest) source))
   )
 )
@@ -129,8 +136,8 @@
 )
 (defun exec-cmp (vm firstarg secondarg)
   "Compare arg1 et arg2 registres ou littéraux et met à jour les flags en conséquence"
-  (let ((arg1 (if (symbolp firstarg) (get vm firstarg) firstarg))
-        (arg2 (if (symbolp secondarg) (get vm secondarg) secondarg)))
+  (let ((arg1 (if (symbolp firstarg) (get vm firstarg) (cadr firstarg)))
+        (arg2 (if (symbolp secondarg) (get vm secondarg) (cadr secondarg))))
     (if (= arg1 arg2)
       (progn (setf(get vm :EQ) 1) (setf(get vm :LT) 0) (setf(get vm :GT) 0))
       (if (< arg1 arg2)
@@ -140,13 +147,13 @@
     )
   ) 
 )
-(defun exec-push (vm arg1)
-  "Ajoute argl, un ittéral ou registre au sommet de la pile"
-  (let ((arg (if (symbolp arg1) (get vm arg1) arg1)))
+(defun exec-push (vm src)
+  "Ajoute src, un ittéral ou registre au sommet de la pile"
+  (let ((source (if (symbolp src) (get vm src) (cadr src))))
     (if (= (get vm :SP) (get vm :maxStack))
       (error "Stack overflow !")
       (progn 
-        (set-to-vm-mem vm (get vm :SP) arg)
+        (set-to-vm-mem vm (get vm :SP) source)
         (exec-incr vm :SP)
       )
     )
@@ -164,23 +171,17 @@
 )
 (defun exec-funcall (vm args)
   "Exécute une fonction Lisp avec les arguments présents sur la pile."
-  
-  ;; Récupérer la fonction à appeler
-  (let* ((func (first args))           ;; Fonction à appeler
-         (nb-args (get-from-vm-mem vm (get vm :FP)))       ;; Nombre d'arguments
-         (resolved-args '()))          ;; Liste des arguments à résoudre
+  (let* ((func (first args)); Fonction à appeler
+         (nb-args (get-from-vm-mem vm (get vm :FP))); Nombre d'arguments
+         (resolved-args '())); Liste des arguments à résoudre
     ;; Construire la liste des arguments depuis la pile
-
-    (let ((i 1))  ;; i commence à 1
+    (let ((i 1))
       (loop while (<= i nb-args) do
             (push (get-from-vm-mem vm (- (get vm :FP) i)) resolved-args)
-            (incf i);; Incrémenter i
+            (incf i)
       )
     )  
-    ;; Debugging : afficher les arguments résolus
-    ;(format t "~%Fonction : ~A, Arguments résolus : ~A" func resolved-args)
-    ;; Appeler la fonction avec les arguments résolus et
-    ;; Stocker le résultat  dans R0
-    (setf (get vm :R0) (apply func resolved-args))
+    ;; Appeler la fonction avec les arguments résolus et Stocker le résultat  dans R0
+    (setf (get vm :R0) (apply func (reverse resolved-args)))
   )
 )

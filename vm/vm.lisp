@@ -57,7 +57,7 @@
     (if (eq (car (get vm :R0)) 'LABEL)
         ;;On ajoute le label et son adresse à la liste des labels connus
         (setf (gethash (intern (symbol-name (second (get vm :R0)))) (get vm :knownLabels)) (get vm :LC))
-        ;;Sinon si on croise un JMP, JSR etc quelconque, idem pour les inconnus
+        ;;Sinon si on croise un JMP, JSR etc quelconque
         (if (char= (char (symbol-name (car (get vm :R0))) 0) #\J)
             ;; Ajouter l'adresse à la liste des inconnus
             (push (get vm :LC) (gethash (intern (symbol-name (second (get vm :R0)))) (get vm :unknownLabels))))
@@ -77,7 +77,6 @@
   "Résout les adresses de chaque JUMP non résolu"
   ;(print-hash-table (get vm :knownLabels))
   ;(print-hash-table (get vm :unknownLabels))
-
  (maphash
   (lambda (label listdeindexes)
     (let ((known-address (gethash (intern (symbol-name label)) (get vm :knownLabels))))
