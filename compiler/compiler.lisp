@@ -44,7 +44,7 @@
 )
 (defun compile-or (expr etiq-fin param-env local-var-env)
   "Compile une expression or de la forme (or expr1 expr2)"
-    (if (null expr) 
+  (if (null expr) 
     (append 
       '((MOVE (LIT 0) :R0)) 
       `((LABEL ,etiq-fin)))
@@ -71,11 +71,15 @@
 (defun compile-defun (expr param-env local-var-env)
   "Compile une définition de fonction de la forme (defun nomfonction (paramètres) corps)"
   (let ((positionPile 1)
-        (etiq-fin (gensym "findefun")))
-    (dolist (param (third expr)) ;; Itère sur chaque paramètre.
-    (setq param-env (acons param (- 0 positionPile) param-env));; Met à jour param-env
-    (setq positionPile (+ positionPile 1)) ;; Incrémente la position.
-    ) 
+        (etiq-fin (gensym "findefun"))
+        (liste-param (third expr)))
+    (loop while liste-param do 
+      (let ((param (car liste-param)))
+        (setq param-env (acons param (- 0 positionPile) param-env));; Met à jour param-env
+        (setq positionPile (+ positionPile 1)) ;; Incrémente la position
+      )
+      (setq liste-param (cdr liste-param))
+    )
     (append 
     `((JMP ,etiq-fin));C'est une déclaration de fonction, on ne doit pas exécuter son contenu sans passer par un jsr
     `((LABEL ,(second expr)));Label nomfonction
@@ -90,7 +94,6 @@
   (let* ((nom-fonction (car expr))      ;; Le nom de la fonction appelée.
         (arguments (cdr expr))         ;; Les arguments de l'appel de fonction.
         (nb-arguments (length arguments))) ;; Le nombre d'arguments.
-    (format t "~%fcall ~A" arguments)
     (append
      ;; Compilation des arguments et leur empilement.
      (apply 'append
@@ -162,26 +165,32 @@
 (defun compile-let-star (expr param-env local-var-env)
   "Compile une expression let* de la forme (let* ((nomvar1 valeurvar1) ... (nomvarn valeurvarn)) expr).
   Transforme let* en une série de let imbriqués et le compile."
-  (let* ((bindings (first expr))  ; Les paires (var valeur)
+  (let* ((bindings (reverse (first expr)))  ; Les paires (var valeur)
          (body (second expr))      ; Corps du let*
          (expanded-expr body))    ; Initialise l'expression finale
     ;; Parcourir les bindings en partant de la fin pour imbriquer les let
-    (dolist (binding (reverse bindings))
-      (setq expanded-expr `(let ((,(first binding) ,(second binding))) ,expanded-expr)))
+    (loop while bindings do
+      (let ((binding (car bindings)))
+        (setq expanded-expr `(let ((,(first binding) ,(second binding))) ,expanded-expr))
+      )
+      (setq bindings (cdr bindings))
+    )
     ;; Compiler l'expression transformée
-    (format t "~%expression let imbriquée : ~% ~A" expanded-expr)
     (compilation expanded-expr param-env local-var-env))
 )
 (defun compile-let (expr param-env local-var-env)
   "Compile une expression let de la forme (let ((nomvar1 valeurvar1) ... (nomvarn valeurvarn)) expr)"
   (let* ((bindings (first expr)); Les bindings locaux dans le let
-         (updated-env local-var-env)
-         (setup-code '())
-         (teardown-code '()) ; Code pour nettoyer après le let
-         (i 0))
+        (updated-env local-var-env)
+        (nb-pop (length bindings))
+        (setup-code '())
+        (body-code '())
+        (teardown-code '())
+        (body (rest expr))
+        (i 0))
     ;; Initialisation des variables locales et mise à jour de l'environnement
-    (loop while (< i (length bindings)) do
-      (let* ((binding (nth i bindings))     ; Chaque binding
+    (loop while bindings do
+      (let* ((binding (car bindings))     ; Chaque binding
              (var-name (first binding))      ; Nom de la variable
              (var-init (second binding)))    ; Valeur initiale de la variable
         ;On ajoute a l'env une nouvelle association (nom_de_variable decalage_dans_la_pile)
@@ -191,24 +200,28 @@
               (append setup-code
                       (compilation var-init param-env local-var-env)
                       '((PUSH :R0))))
+        (setq bindings (cdr bindings))
       )
-      (setq i (+ i 1)); Incrémenter l'indice
     )  
     ;; Générer le code pour dépiler les variables locales à la fin
-    (setq i 0)  ; Réinitialisation du compteur
-    (loop while (< i (length bindings)) do
+    (loop while (< i nb-pop) do
       (setq teardown-code
             (append teardown-code '((POP :R1))))
-      (setq i (1+ i)))  ; Incrémenter l'indice
-    ;; Combiner tout le code : initialisation, corps, nettoyage
-    (append setup-code (compilation (second expr) param-env updated-env) teardown-code)
+      (setq i (+ i 1)))  ; Incrémenter l'indice
+
+    (loop while body do
+      (setq body-code (append body-code (compilation (car body) param-env updated-env)))
+      (setq body (cdr body))
+    )
+    ; Combiner tout le code : initialisation, corps, nettoyage
+    (append setup-code body-code teardown-code)
   )
 )
 (defun compile-lit (expr param-env local-var-env)
   "Compile un littéral : variable locale, paramètre de fonction ou constante."
   (let ((variable (or (assoc expr param-env) (assoc expr local-var-env))))
     (cond
-      ;; Si la variable est trouvée dans l'un des environnements
+      ;; Si la variable est trouvée dans l'un des environnements     
       (variable
        `((LOAD (:FP ,(cdr variable)) :R0)))
       ;; Si l'expression est NIL
@@ -220,19 +233,30 @@
 )
 (defun compile-while (expr param-env local-var-env)
   "Compile une boucle de la forme (loop while <condition> do <instructions>)"
-  (let ((etiq-fin (gensym "finwhile"))
-	      (etiq-boucle (gensym "while"))) 
-    (append 
-      `((LABEL ,etiq-boucle))
-      (compilation (third expr) param-env local-var-env);Compilation de la condition
-      '((CMP :R0 (LIT 0)));Si la condition du while est/devient fausse 
-      `((JEQ ,etiq-fin));on sort de la boucle
-      (compilation (fifth expr) param-env local-var-env);Compilation de l'intérieur du while
-      `((JMP ,etiq-boucle));on continue de boucler
-      `((LABEL ,etiq-fin))
+  (let* ((etiq-fin (gensym "finwhile"))     ; Étiquette pour la fin de la boucle
+         (etiq-boucle (gensym "while"))     ; Étiquette pour le début de la boucle
+         (body-code '())                    ; Code pour le corps de la boucle
+         (body (rest (rest (rest expr)))))  ; Corps de la boucle (après le "while")
+
+    ;; Compilation du corps de la boucle
+    (loop while body do
+      (setq body-code (append body-code (compilation (car body) param-env local-var-env)))
+      (setq body (cdr body))
     )
+
+    ;; Combinaison de tout le code
+    (append 
+     `((LABEL ,etiq-boucle))   ; Étiquette du début de la boucle
+     (compilation (third expr) param-env local-var-env) ; Compilation de la condition
+     '((CMP :R0 (LIT 0)))     ; Comparaison de la condition avec 0
+     `((JEQ ,etiq-fin))       ; Sortie si la condition est fausse
+     body-code                ; Corps de la boucle
+     `((JMP ,etiq-boucle))    ; Retour au début de la boucle
+     `((LABEL ,etiq-fin))     ; Étiquette de fin de la boucle
+     )
   )
 )
+
 (defun compile-op (expr param-env local-var-env)
   "Compile une opération de la forme (op expr1 expr2) où op est parmi {+,-,*,/}"
   (append 

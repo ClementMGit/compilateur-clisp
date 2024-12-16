@@ -4,12 +4,12 @@
 (defun run-all-tests ()
   (setq test-count 0)
   (run-vm-tests T);54 Tests
-  (run-comp-tests T);50 Tests
-  (format t "~%Nombre total de tests réussis : ~D/104~%" test-count)
+  (run-comp-tests T);52 Tests
+  (format t "~%Nombre total de tests réussis : ~D/106~%" test-count)
 )
 
 (defun run-comp-tests (&optional (run-all NIL))
-  ;50 Tests
+  ;52 Tests
   (setq test-comp-count 0)
   (test-if);2 Tests
   (test-comparators);13 Tests
@@ -20,14 +20,14 @@
   (test-fonctions);5 Tests
   (test-let);2 Tests
   (test-setq);1 Test
-  (test-while);2 Tests
+  (test-while);4 Tests
   (test-file-compilation);2 Tests
   (test-letstar);1 Test
   (test-lisp-fonctions);2 Tests
   (if run-all
     (setq test-count (+ test-count test-comp-count))
   )
-  (format t "~%Nombre total de tests réussis pour la compilation: ~D/50~%" test-comp-count)
+  (format t "~%Nombre total de tests réussis pour la compilation: ~D/52~%" test-comp-count)
 )
 (defun comp-file-test (file-name-in file-name-out expected-value comparator)
   "Fonction générique d'un cas de test unitaire de compilation de fichier lisp vers assembleur"
@@ -112,13 +112,16 @@
   ;Boucle while incrémentation d'un counter jusqua 10
   (comp-test '(progn (defun add (x) (let ((counter 0)) (progn (loop while (< counter 10) do  (setq counter (+ counter 1))  ) (= counter 10)))) (add 90) ) 1 #'=)
   (comp-test '(progn (defun add (x) (let ((counter 0)) (progn (loop while (> counter 10) do  (setq counter (+ counter 1))) (= counter 0)))) (add 90) ) 1 #'=)
+  (comp-test '(progn (defun add (x) (let ((counter 0)) (progn (loop while (< counter 10) do  (setq counter (+ counter 1)) (setq counter (+ counter 3)) ) (= counter 12)))) (add 90) ) 1 #'=)
+  (comp-test '(progn (defun add (x) (let ((counter 0)) (progn (loop while (< counter 10) do  (setq counter (+ counter 1)) (setq counter (+ counter 3)) ) (= counter 11)))) (add 90) ) 0 #'=)
+
 )
 (defun test-progn ()
   (comp-test '(progn (+ 1 1) (+ 2 2)) 4 #'=)
 )
 (defun test-let ()
   ;Simple
-  (comp-test '(progn (defun add (x) (let ((a 10)) (+ a x))) (add 90)) 100 #'=)
+  (comp-test '(progn (defun add (x) (let ((a 10)) (+ a a)(+ a x))) (add 90)) 100 #'=)
   ;Nested, équivalent à un let*
   (comp-test '(progn (defun add (x) (let ((a 5)) (let ((b 3)) (+ (+ a b) x))))(add 10)) 18 #'=)
 )
