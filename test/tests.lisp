@@ -7,7 +7,13 @@
   (run-comp-tests T);52 Tests
   (format t "~%Nombre total de tests réussis : ~D/106~%" test-count)
 )
+(defun test-comp-comp ()
+  (make-vm NIL 'vm 100000);VM sans affichage mémoire initial
+  (compile-fichier "./../compiler/compiler.lisp" "compiler.asm")
+  (vm-load-file "compiler.asm")
+  (vm-exec)
 
+)
 (defun run-comp-tests (&optional (run-all NIL))
   ;52 Tests
   (setq test-comp-count 0)
@@ -57,6 +63,10 @@
       (setq test-comp-count (+ test-comp-count 1))
       (format t "~%Test de compilation de '~A' réussi, valeur attendue : ~A, obtenue : ~A.~%" code expected-value (get 'vm :R0)))
     (format t "~%Test de compilation de '~A' échoué, valeur attendue : ~A, obtenue : ~A.~%" code expected-value (get 'vm :R0)))
+)
+(defun test-backquote ()
+  (comp-test '(progn (defun add (x) (let ((labelname "BLABLA")) (append `((LABEL ,labelname))))) (add 90) ) '((LABEL "BLABLA")) #'equal)     
+
 )
 (defun test-letstar ()
   (comp-test '(progn (defun add (x) (let* ((a 5) (b (+ a 6))) (+ a b))) (add 10)) 16 #'=)

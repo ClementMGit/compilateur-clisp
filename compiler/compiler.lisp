@@ -1,9 +1,14 @@
 (defun compilation (expr param-env local-var-env)
-  (if (atom expr)
+  (if (atom expr) 
     (compile-lit expr param-env local-var-env)
     (let ((first-symbol (car expr))
           (cdr-expr (cdr expr)))
+      ;(format t "car expr ~A~%" first-symbol)
+      (format t "expr ~A~%" expr)
+      ;(format t "eql ~A~%~%" (string-equal first-symbol 'BACKQUOTE))
       (cond
+      ((and (listp expr) (eql first-symbol 'quote)) (compile-lit (second expr) param-env local-var-env))
+      ((and (listp expr) (eq (intern (symbol-name first-symbol)) 'backquote)) (compile-backquote expr param-env local-var-env))
       ((eql first-symbol 'let) (compile-let cdr-expr param-env local-var-env))
       ((eql first-symbol 'let*) (compile-let-star cdr-expr param-env local-var-env))
       ((eql first-symbol 'and) (compile-and cdr-expr (gensym "finAnd") param-env local-var-env))
@@ -16,13 +21,21 @@
       ((eql first-symbol 'progn) (compile-progn cdr-expr param-env local-var-env))
       ((member first-symbol '(< > = <= >= )) (compile-comp expr param-env local-var-env))
       ((member first-symbol '(+ - * /)) (compile-op expr param-env local-var-env))
+
       (t (compile-fcall expr param-env local-var-env))
       )
     )
   )
 )
+(defun compile-backquote (expr param-env local-var-env)
+  ;"Compile une expression backquotée"
+  (let ((expr (macroexpand expr)))
+      (compilation expr param-env local-var-env)
+  ) 
+)
+
 (defun compile-fichier (file-name output-file-name)
-  "Compile un fichier .lisp en fichier .asm"
+  ;"Compile un fichier .lisp en fichier .asm"
   (let* ((file (open file-name))
         (expr (read file nil))
         (lisp-code '())
@@ -43,7 +56,7 @@
   )
 )
 (defun compile-or (expr etiq-fin param-env local-var-env)
-  "Compile une expression or de la forme (or expr1 expr2)"
+  ;"Compile une expression or de la forme (or expr1 expr2)"
   (if (null expr) 
     (append 
       '((MOVE (LIT 0) :R0)) 
@@ -56,7 +69,7 @@
   )
 )
 (defun compile-and (expr etiq-fin param-env local-var-env)
-  "Compile une expression and de la forme (and expr1 expr2)"
+  ;"Compile une expression and de la forme (and expr1 expr2)"
   (if (null expr) 
     (append 
       '((MOVE (LIT 1) :R0)) 
@@ -69,15 +82,13 @@
   )
 )
 (defun compile-defun (expr param-env local-var-env)
-  "Compile une définition de fonction de la forme (defun nomfonction (paramètres) corps)"
+  ;"Compile une définition de fonction de la forme (defun nomfonction (paramètres) corps)"
   (let ((positionPile 1)
         (etiq-fin (gensym "findefun"))
         (liste-param (third expr)))
     (loop while liste-param do 
-      (let ((param (car liste-param)))
-        (setq param-env (acons param (- 0 positionPile) param-env));; Met à jour param-env
-        (setq positionPile (+ positionPile 1)) ;; Incrémente la position
-      )
+      (setq param-env (acons (car liste-param) (- 0 positionPile) param-env));; Met à jour param-env
+      (setq positionPile (+ positionPile 1)) ;; Incrémente la position
       (setq liste-param (cdr liste-param))
     )
     (append 
@@ -90,27 +101,21 @@
   )
 )
 (defun compile-fcall (expr param-env local-var-env)
-  "Compile un appel de fonction de la forme (nomfonction arg1..argn)"
-  (let* ((nom-fonction (car expr))      ;; Le nom de la fonction appelée.
-        (arguments (cdr expr))         ;; Les arguments de l'appel de fonction.
-        (nb-arguments (length arguments))) ;; Le nombre d'arguments.
-    (append
-     ;; Compilation des arguments et leur empilement.
-     (apply 'append
-            (map 'list
-                 (lambda (arg)
-                   (cond
-                     ;; Si l'argument est une liste littérale (quote)
-                     ((and (listp arg) (eq (car arg) 'quote))
-                      `((MOVE (LIT ,(second arg)) :R0)
-                        (PUSH :R0)))
-                     ;; Sinon, compiler normalement
-                     (t
-                      (append
-                       (compilation arg param-env local-var-env)
-                       '((PUSH :R0))))))
-                 (reverse arguments))
+  ;"Compile un appel de fonction de la forme (nomfonction arg1..argn)"
+  (let* ((nom-fonction (car expr))
+        (arguments (reverse (cdr expr)))
+        (nb-arguments (length arguments))
+        (compiled-args '())) ;
+    
+    (loop while arguments do 
+      (setq compiled-args (append compiled-args
+        (compilation (car arguments) param-env local-var-env)
+        '((PUSH :R0)))
+      )
+      (setq arguments (cdr arguments))
     )
+    (append
+    compiled-args
     '((MOVE :FP :R1)); Sauvegarde old FP 
     '((MOVE :SP :FP));nouveau FP doit pointer sur nb args
     `((PUSH (LIT ,nb-arguments))); Empile le nombre d'arguments.
@@ -131,7 +136,7 @@
   )
 )
 (defun compile-cond (expr etiq-fin param-env local-var-env)
-  "Compile un cond de la forme (cond ((test1) (expr1)) ((test2) (expr2)) )"
+  ;"Compile un cond de la forme (cond ((test1) (expr1)) ((test2) (expr2)) )"
   (if (null expr)
     `((LABEL ,etiq-fin));Fin du cond 
     (let ((etiq-cond (gensym "cond")))                              
@@ -153,7 +158,7 @@
   )
 )
 (defun compile-setq (expr param-env local-var-env)
-  "Compile une expression setq de la forme (setq variable nouvelle-valeur)"
+  ;"Compile une expression setq de la forme (setq variable nouvelle-valeur)"
   (let ((variable-local (or (assoc (second expr) param-env) (assoc (second expr) local-var-env))))  ; Recherche de la variable dans l'environnement
     (if variable-local  ; Si la variable est déjà locale
         (append 
@@ -163,8 +168,8 @@
   )
 )
 (defun compile-let-star (expr param-env local-var-env)
-  "Compile une expression let* de la forme (let* ((nomvar1 valeurvar1) ... (nomvarn valeurvarn)) expr).
-  Transforme let* en une série de let imbriqués et le compile."
+  ;"Compile une expression let* de la forme (let* ((nomvar1 valeurvar1) ... (nomvarn valeurvarn)) expr).
+  ;Transforme let* en une série de let imbriqués et le compile."
   (let* ((bindings (reverse (first expr)))  ; Les paires (var valeur)
          (body (second expr))      ; Corps du let*
          (expanded-expr body))    ; Initialise l'expression finale
@@ -179,7 +184,7 @@
     (compilation expanded-expr param-env local-var-env))
 )
 (defun compile-let (expr param-env local-var-env)
-  "Compile une expression let de la forme (let ((nomvar1 valeurvar1) ... (nomvarn valeurvarn)) expr)"
+  ;"Compile une expression let de la forme (let ((nomvar1 valeurvar1) ... (nomvarn valeurvarn)) expr)"
   (let* ((bindings (first expr)); Les bindings locaux dans le let
         (updated-env local-var-env)
         (nb-pop (length bindings))
@@ -218,7 +223,7 @@
   )
 )
 (defun compile-lit (expr param-env local-var-env)
-  "Compile un littéral : variable locale, paramètre de fonction ou constante."
+  ;"Compile un littéral : variable locale, paramètre de fonction ou constante."
   (let ((variable (or (assoc expr param-env) (assoc expr local-var-env))))
     (cond
       ;; Si la variable est trouvée dans l'un des environnements     
@@ -232,7 +237,7 @@
       `((MOVE (LIT ,expr) :R0)))))
 )
 (defun compile-while (expr param-env local-var-env)
-  "Compile une boucle de la forme (loop while <condition> do <instructions>)"
+  ;"Compile une boucle de la forme (loop while <condition> do <instructions>)"
   (let* ((etiq-fin (gensym "finwhile"))     ; Étiquette pour la fin de la boucle
          (etiq-boucle (gensym "while"))     ; Étiquette pour le début de la boucle
          (body-code '())                    ; Code pour le corps de la boucle
@@ -258,7 +263,7 @@
 )
 
 (defun compile-op (expr param-env local-var-env)
-  "Compile une opération de la forme (op expr1 expr2) où op est parmi {+,-,*,/}"
+  ;"Compile une opération de la forme (op expr1 expr2) où op est parmi {+,-,*,/}"
   (append 
 		(compilation (second expr) param-env local-var-env);Compile expr1 et met le résultat dans R0
     '((PUSH :R0));On empile R0
@@ -274,8 +279,8 @@
   )
 )
 (defun compile-comp (expr param-env local-var-env)
-  "Compile une comparaison de la forme (op expr1 exp2) où op est parmi {=,>,<,>=,<=}
-  Le résultat de la comparaison est 0(->false) ou 1(->true) dans R0"
+  ;"Compile une comparaison de la forme (op expr1 exp2) où op est parmi {=,>,<,>=,<=}
+  ;Le résultat de la comparaison est 0(->false) ou 1(->true) dans R0"
   (let ((etiq-fin (gensym "finTest")))
     (append 
         (compilation (second expr) param-env local-var-env);On compile la première partie de la comparaison
@@ -299,7 +304,7 @@
   )
 )
 (defun compile-if (expr param-env local-var-env)
-  "Compile un if statement de la forme (if condition expr-alors expr-sinon)"
+  ;"Compile un if statement de la forme (if condition expr-alors expr-sinon)"
   (let ((etiq-else (gensym "else"))
 	      (etiq-endif (gensym "endif")))
     (append
