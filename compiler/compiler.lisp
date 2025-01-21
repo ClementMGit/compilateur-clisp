@@ -30,7 +30,7 @@
 (defun compile-backquote (expr param-env local-var-env)
   ;"Compile une expression backquotée"
   (let ((expr (macroexpand expr)))
-      (compilation expr param-env local-var-env)
+    (compilation expr param-env local-var-env)
   ) 
 )
 
@@ -40,7 +40,7 @@
         (expr (read file nil))
         (lisp-code '())
         (asm-code '()))
-
+  ;On itère sur chaque expression lisp du fichier
   (loop while expr do
     (setq lisp-code (append lisp-code (list expr)))
     (setq expr (read file nil))
@@ -76,7 +76,7 @@
       `((LABEL ,etiq-fin)))
     (append 
       (compilation (car expr) param-env local-var-env) 
-	    '((CMP :R0 (LIT 1)))
+	    '((CMP :R0 (LIT 1)));;Si (cmp obj 1)
 	    `((JNE ,etiq-fin))
 	    (compile-and (cdr expr) etiq-fin param-env local-var-env))
   )
@@ -159,7 +159,7 @@
 )
 (defun compile-setq (expr param-env local-var-env)
   ;"Compile une expression setq de la forme (setq variable nouvelle-valeur)"
-  (let ((variable-local (or (assoc (second expr) param-env) (assoc (second expr) local-var-env))))  ; Recherche de la variable dans l'environnement
+  (let ((variable-local (if (assoc (second expr) param-env)  (assoc (second expr) param-env) (if (assoc (second expr) local-var-env) (assoc (second expr) local-var-env)))))  ; Recherche de la variable dans l'environnement
     (if variable-local  ; Si la variable est déjà locale
         (append 
          (compilation (third expr) param-env local-var-env); Compiler la valeur à affecter
@@ -224,14 +224,13 @@
 )
 (defun compile-lit (expr param-env local-var-env)
   ;"Compile un littéral : variable locale, paramètre de fonction ou constante."
-  (let ((variable (or (assoc expr param-env) (assoc expr local-var-env))))
+  (let ((variable (if (assoc expr param-env) (assoc expr param-env) (if (assoc expr local-var-env) (assoc expr local-var-env)))))
     (cond
       ;; Si la variable est trouvée dans l'un des environnements     
       (variable
        `((LOAD (:FP ,(cdr variable)) :R0)))
       ;; Si l'expression est NIL
-      ((null expr)
-       '((MOVE (LIT 0) :R0)))
+     
       ;; Sinon, on suppose que c'est une constante
       (t
       `((MOVE (LIT ,expr) :R0)))))
@@ -253,7 +252,7 @@
     (append 
      `((LABEL ,etiq-boucle))   ; Étiquette du début de la boucle
      (compilation (third expr) param-env local-var-env) ; Compilation de la condition
-     '((CMP :R0 (LIT 0)))     ; Comparaison de la condition avec 0
+     '((CMP :R0 (LIT 0)))     ; Comparaison de la condition avec 0 cmp (10) 0
      `((JEQ ,etiq-fin))       ; Sortie si la condition est fausse
      body-code                ; Corps de la boucle
      `((JMP ,etiq-boucle))    ; Retour au début de la boucle
@@ -261,9 +260,9 @@
      )
   )
 )
-
 (defun compile-op (expr param-env local-var-env)
   ;"Compile une opération de la forme (op expr1 expr2) où op est parmi {+,-,*,/}"
+  (let ((first-expr (first expr)))
   (append 
 		(compilation (second expr) param-env local-var-env);Compile expr1 et met le résultat dans R0
     '((PUSH :R0));On empile R0
@@ -271,17 +270,20 @@
     '((PUSH :R0))
 		'((POP :R1));On récupère le résultat des nos 2 expressions compilées
 		'((POP :R0))
-		(case (first expr);Cas sur l'opérateur arithmétique
-		  ('+ '((ADD :R1 :R0)))
-		  ('- '((SUB :R1 :R0)))
-		  ('* '((MUL :R1 :R0)))
-		  ('/ '((DIV :R1 :R0))))
+    ;Cas sur l'opérateur arithmétique
+		(cond ((eql first-expr '+) '((ADD :R1 :R0)))
+		  ((eql first-expr '-) '((SUB :R1 :R0)))
+		  ((eql first-expr '*) '((MUL :R1 :R0)))
+      ((eql first-expr '/) '((DIV :R1 :R0)))
+      )
+  )
   )
 )
 (defun compile-comp (expr param-env local-var-env)
   ;"Compile une comparaison de la forme (op expr1 exp2) où op est parmi {=,>,<,>=,<=}
   ;Le résultat de la comparaison est 0(->false) ou 1(->true) dans R0"
-  (let ((etiq-fin (gensym "finTest")))
+  (let ((etiq-fin (gensym "finTest"))
+        (first-expr (first expr)))
     (append 
         (compilation (second expr) param-env local-var-env);On compile la première partie de la comparaison
         '((PUSH :R0));On empile R0
@@ -291,12 +293,12 @@
         '((POP :R0))
         '((CMP :R0 :R1)); On compare les deux parties de la comparaisons
         '((MOVE (LIT 1) :R0)) 
-        (case (first expr);Cas sur l'opérateur de comparaison
-          ('= `((JEQ ,etiq-fin)))
-          ('< `((JLT ,etiq-fin)))
-          ('> `((JGT ,etiq-fin)))
-          ('<= `((JLE ,etiq-fin)))
-          ('>= `((JGE ,etiq-fin)))
+        ;Cas sur l'opérateur de comparaison
+        (cond ((eql first-expr '=) `((JEQ ,etiq-fin)))
+          ((eql first-expr '<) `((JLT ,etiq-fin)))
+          ((eql first-expr '>) `((JGT ,etiq-fin)))
+          ((eql first-expr '<=) `((JLE ,etiq-fin)))
+          ((eql first-expr '>=) `((JGE ,etiq-fin)))
         )
         ;Cas où la condition s'avère fausse, aucun saut effectué par les J
         '((MOVE (LIT 0) :R0))

@@ -8,12 +8,17 @@
   (format t "~%Nombre total de tests réussis : ~D/106~%" test-count)
 )
 (defun test-comp-comp ()
-  (make-vm NIL 'vm 100000);VM sans affichage mémoire initial
+  (make-vm NIL 'vm 8000)
   (compile-fichier "./../compiler/compiler.lisp" "compiler.asm")
   (vm-load-file "compiler.asm")
+  (vm-load (compilation '(progn (defun fibo (n) (if (= 0 n) 0 (if (= 1 n) 1 (+ (fibo (- n 1)) (fibo (- n 2))))))(fibo 10)) '() '()))
   (vm-exec)
-
+  (vm-print);55 dans R0
+  (vm-load (compilation '(fibo 9) '() '()))
+  (vm-exec)
+  (vm-print);34 dans R0
 )
+
 (defun run-comp-tests (&optional (run-all NIL))
   ;52 Tests
   (setq test-comp-count 0)

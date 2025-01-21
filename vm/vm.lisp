@@ -71,7 +71,6 @@
   (exec-move vm '(HALT) :R0)
   (exec-store vm :R0 (get vm :LC))  
   (if debug (vm-print vm))
-  '(Code chargé en mémoire !)
 )
 (defun resolve-jumps (vm)
   "Résout les adresses de chaque JUMP non résolu"
@@ -94,7 +93,7 @@
 (defun exec-instr (vm instr)
   "Exécute l'instruction passée en paramètre"
   (format t "~%Exécution de ~S" instr)
-  (format t "~%PC : ~D" (get vm :PC))
+  ;(format t "~%PC : ~D" (get vm :PC))
   (let ((arg1 (second instr)) 
        (arg2 (third instr)))
     (case (first instr)
@@ -120,7 +119,7 @@
       ('JEQ (exec-jeq vm arg1))
       ('JNE (exec-jne vm arg1))
       ('FUNCALL (exec-funcall vm (rest instr) ))
-      ('HALT (setf(get vm :RUNNING) nil))
+      ('HALT (progn (setf(get vm :RUNNING) nil)) (setf(get vm :PC) (+ (get vm :PC) -1)))
     )
   )
 )
