@@ -1,7 +1,7 @@
 (require "debug.lisp")
 
 (defun make-vm (&optional (debug T) (vm 'vm) (size 1000))
-  "Création d'une machine virtuelle"
+  ;"Création d'une machine virtuelle"
   ;; On affecte a chaque propriéte/registre un nom et une valeur initiale
   (setf(get vm :nomvm) vm)
   (setf(get vm :size) size)
@@ -21,7 +21,7 @@
   (setf(get vm :EQ) 0)
   (setf(get vm :GT) 0)
   (setf(get vm :LT) 0)
-  ;;Max stack, fin de la pile, vers 30% de la taille de la mémoire
+  ;;Max stack, fin de la pile, vers 30% de la taille de la mémoire(arbitraire)
   (setf(get vm :maxStack) (floor (* size 0.30)))
   ;;Start Code, début de la zone de code juste après la fin de la pile
   (setf(get vm :startCode) (+ 1 (get vm :maxStack)))
@@ -73,25 +73,25 @@
   (if debug (vm-print vm))
 )
 (defun resolve-jumps (vm)
-  "Résout les adresses de chaque JUMP non résolu"
+  ;"Résout les adresses de chaque JUMP non résolu"
   ;(print-hash-table (get vm :knownLabels))
   ;(print-hash-table (get vm :unknownLabels))
  (maphash
-  (lambda (label listdeindexes)
+  (lambda (label indexList)
     (let ((known-address (gethash (intern (symbol-name label)) (get vm :knownLabels))))
       (if known-address
           ;; Si le label est connu, remplacez les adresses dans les JMP/JSR
-          (dolist (indexDuJump listdeindexes)
+          (dolist (indexDuJump indexList)
             (set-to-vm-mem vm indexDuJump (list (first (get-from-vm-mem vm indexDuJump)) known-address))
           )
           ;; Si le label est inconnu, remplacez les différents JUMP par FUNCALL <label>
-          (dolist (indexDuJump listdeindexes)
+          (dolist (indexDuJump indexList)
             (set-to-vm-mem vm indexDuJump (list 'FUNCALL label)))))
           )
   (get vm :unknownLabels))
 )
 (defun exec-instr (vm instr)
-  "Exécute l'instruction passée en paramètre"
+  ;"Exécute l'instruction passée en paramètre"
   (format t "~%Exécution de ~S" instr)
   ;(format t "~%PC : ~D" (get vm :PC))
   (let ((arg1 (second instr)) 
@@ -124,7 +124,7 @@
   )
 )
 (defun vm-exec (&optional (debug NIL) (run-step-by-step NIL) (vm 'vm))
-  "Exécute le code présent en mémoire de la VM"
+  ;"Exécute le code présent en mémoire de la VM"
   (setf(get vm :RUNNING) t)
   ;; Tant que la vm tourne on execute les instructions
   (loop while (get vm :RUNNING) do 

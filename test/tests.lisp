@@ -1,27 +1,30 @@
 (require "./../vm/vm.lisp")
 (require "./../compiler/compiler.lisp")
-
 (defun run-all-tests ()
   (setq test-count 0)
   (run-vm-tests T);54 Tests
-  (run-comp-tests T);52 Tests
-  (format t "~%Nombre total de tests réussis : ~D/106~%" test-count)
+  (run-comp-tests T);53 Tests
+  (format t "~%Nombre total de tests réussis : ~D/107~%" test-count)
 )
 (defun test-comp-comp ()
   (make-vm NIL 'vm 8000)
-  (compile-fichier "./../compiler/compiler.lisp" "compiler.asm")
-  (vm-load-file "compiler.asm") ; compilation du compilo
+  (compile-fichier "./../compiler/compiler.lisp" "compiler.asm"); compilation du compilo
+  (vm-load-file "compiler.asm") 
   ;compilation d'un appel à compilation pour pouvoir utiliser le compilo compilé
   (vm-load (compilation '(compilation '(defun fibo (n) (if (= 0 n) 0 (if (= 1 n) 1 (+ (fibo (- n 1)) (fibo (- n 2)))))) '() '()) '() '()))
   (vm-exec)
-  (vm-load (get 'vm :R0));load fibo compilée par le compilo compilé
+  (vm-load (get 'vm :R0));load la définition de fibo compilée par le compilo compilé
   (vm-load (compilation '(compilation '(fibo 10) '() '()) '() '()));
   (vm-exec)
   (vm-load (get 'vm :R0));load appel de fibo compilée par le compilo compilé
   (vm-exec)
   (vm-print);55 dans R0
+  (if (= (get 'vm :R0) 55)
+    (progn
+      (setq test-comp-count (+ test-comp-count 1))
+      (format t "~%Test de compilation de la fonction fibonacci avec le compilateur compilé réussi, valeur attendue : 55, obtenue : ~A.~%" (get 'vm :R0)))
+    (format t "~%Test de compilation de la fonction fibonacci avec le compilateur compilé échoué, valeur attendue : 55, obtenue : ~A.~%" (get 'vm :R0)))
 )
-
 (defun run-comp-tests (&optional (run-all NIL))
   ;52 Tests
   (setq test-comp-count 0)
@@ -38,10 +41,11 @@
   (test-file-compilation);2 Tests
   (test-letstar);1 Test
   (test-lisp-fonctions);2 Tests
+  (test-comp-comp);1 Test
   (if run-all
     (setq test-count (+ test-count test-comp-count))
   )
-  (format t "~%Nombre total de tests réussis pour la compilation: ~D/52~%" test-comp-count)
+  (format t "~%Nombre total de tests réussis pour la compilation: ~D/53~%" test-comp-count)
 )
 (defun comp-file-test (file-name-in file-name-out expected-value comparator)
   "Fonction générique d'un cas de test unitaire de compilation de fichier lisp vers assembleur"
@@ -58,7 +62,6 @@
 (defun test-file-compilation ()
   (comp-file-test "factorial.lisp" "factorial.asm" 720 #'=)
   (comp-file-test "fibonacci.lisp" "fibonacci.asm" 55 #'=)
-
 )
 (defun comp-test (code expected-value comparator)
   "Fonction générique d'un cas de test unitaire de compilation d'expression lisp"
@@ -74,7 +77,6 @@
 )
 (defun test-backquote ()
   (comp-test '(progn (defun add (x) (let ((labelname "BLABLA")) (append `((LABEL ,labelname))))) (add 90) ) '((LABEL "BLABLA")) #'equal)     
-
 )
 (defun test-letstar ()
   (comp-test '(progn (defun add (x) (let* ((a 5) (b (+ a 6))) (+ a b) (- b a))) (add 10)) 6 #'=)
@@ -95,7 +97,6 @@
   (comp-test '(and (or (= 2 1) (= 1 1)) (= 1 1)) 1 #'=)
   (comp-test '(and (or (= 2 1) (= 1 1)) (= 2 1)) 0 #'=)
 )
-
 (defun test-arithmetic-operators ()
   (comp-test '(+ 1 1) 2 #'=)
   (comp-test '(- 3 1) 2 #'=)
@@ -158,7 +159,6 @@
   (comp-test '(progn (defun add (x y) (+ x y))(add (add 6 4) 3)) 13 #'=)
   (comp-test '(progn (defun fibo (n)(if (= 0 n) 0 (if (= 1 n) 1 (+ (fibo (- n 1))(fibo (- n 2))))))(fibo 10)) 55 #'=)
 )
-
 (defun run-vm-tests (&optional (run-all NIL))
   ;54 tests
   (setq test-vm-count 0)
@@ -290,7 +290,7 @@
 )
 (defun test-exec-rtn ()
     ;;Test que rtn retourne au bon endroit
-    (vm-test '((JMP finfonction1)(LABEL fonction1)(MOVE (LIT 2) :R0)(RTN)(LABEL inateignable)(MOVE (LIT 3) :R0)(LABEL finfonction1)(JSR fonction1)(MOVE (LIT 3) :R0)) 3 #'=)
+    (vm-test '((JMP finfonction1)(LABEL fonction1)(MOVE (LIT 2) :R0)(RTN)(LABEL inateignable)(MOVE (LIT 50000) :R0)(LABEL finfonction1)(JSR fonction1)(MOVE (LIT 3) :R0)) 3 #'=)
     ;Test que la fonction appellée avec JSR s'execute bien et que le rtn saute par dessus le label inateignable
     (vm-test '((JMP finfonction1)(LABEL fonction1)(MOVE (LIT 2) :R0)(RTN)(LABEL inateignable)(MOVE (LIT 3) :R0)(LABEL finfonction1)(JSR fonction1)) 2 #'=)
 )
