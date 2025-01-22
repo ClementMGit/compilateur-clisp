@@ -21,8 +21,8 @@
   (setf(get vm :EQ) 0)
   (setf(get vm :GT) 0)
   (setf(get vm :LT) 0)
-  ;;Max stack, fin de la pile, vers 50% de la taille de la mémoire
-  (setf(get vm :maxStack) (floor (* size 0.50)))
+  ;;Max stack, fin de la pile, vers 30% de la taille de la mémoire
+  (setf(get vm :maxStack) (floor (* size 0.30)))
   ;;Start Code, début de la zone de code juste après la fin de la pile
   (setf(get vm :startCode) (+ 1 (get vm :maxStack)))
   ;;Program counter, initialisé au début de la zone de code

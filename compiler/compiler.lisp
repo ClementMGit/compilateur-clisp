@@ -3,10 +3,9 @@
     (compile-lit expr param-env local-var-env)
     (let ((first-symbol (car expr))
           (cdr-expr (cdr expr)))
-      ;(format t "car expr ~A~%" first-symbol)
-      (format t "expr ~A~%" expr)
-      ;(format t "eql ~A~%~%" (string-equal first-symbol 'BACKQUOTE))
+      (format t "compilation de ~A~%" expr)
       (cond
+      ((and (listp expr) (not (symbolp first-symbol)))(compile-progn expr param-env local-var-env))
       ((and (listp expr) (eql first-symbol 'quote)) (compile-lit (second expr) param-env local-var-env))
       ((and (listp expr) (eq (intern (symbol-name first-symbol)) 'backquote)) (compile-backquote expr param-env local-var-env))
       ((eql first-symbol 'let) (compile-let cdr-expr param-env local-var-env))
@@ -21,7 +20,6 @@
       ((eql first-symbol 'progn) (compile-progn cdr-expr param-env local-var-env))
       ((member first-symbol '(< > = <= >= )) (compile-comp expr param-env local-var-env))
       ((member first-symbol '(+ - * /)) (compile-op expr param-env local-var-env))
-
       (t (compile-fcall expr param-env local-var-env))
       )
     )
@@ -152,8 +150,9 @@
   )
 )
 (defun compile-progn (expr param-env local-var-env)
+  ;; Compile une expression progn de la forme (progn expr1 ... exprn)
   (if (null expr) 
-    ()
+      ()
     (append (compilation (car expr) param-env local-var-env) (compile-progn (cdr expr) param-env local-var-env))
   )
 )
@@ -171,17 +170,16 @@
   ;"Compile une expression let* de la forme (let* ((nomvar1 valeurvar1) ... (nomvarn valeurvarn)) expr).
   ;Transforme let* en une série de let imbriqués et le compile."
   (let* ((bindings (reverse (first expr)))  ; Les paires (var valeur)
-         (body (second expr))      ; Corps du let*
-         (expanded-expr body))    ; Initialise l'expression finale
+         (body (rest expr)))    ; Initialise l'expression finale
     ;; Parcourir les bindings en partant de la fin pour imbriquer les let
     (loop while bindings do
       (let ((binding (car bindings)))
-        (setq expanded-expr `(let ((,(first binding) ,(second binding))) ,expanded-expr))
+        (setq body `(let ((,(first binding) ,(second binding))) ,body))
       )
       (setq bindings (cdr bindings))
     )
     ;; Compiler l'expression transformée
-    (compilation expanded-expr param-env local-var-env))
+    (compilation body param-env local-var-env))
 )
 (defun compile-let (expr param-env local-var-env)
   ;"Compile une expression let de la forme (let ((nomvar1 valeurvar1) ... (nomvarn valeurvarn)) expr)"
@@ -214,12 +212,8 @@
             (append teardown-code '((POP :R1))))
       (setq i (+ i 1)))  ; Incrémenter l'indice
 
-    (loop while body do
-      (setq body-code (append body-code (compilation (car body) param-env updated-env)))
-      (setq body (cdr body))
-    )
     ; Combiner tout le code : initialisation, corps, nettoyage
-    (append setup-code body-code teardown-code)
+    (append setup-code (compile-progn body param-env updated-env) teardown-code)
   )
 )
 (defun compile-lit (expr param-env local-var-env)
@@ -228,9 +222,7 @@
     (cond
       ;; Si la variable est trouvée dans l'un des environnements     
       (variable
-       `((LOAD (:FP ,(cdr variable)) :R0)))
-      ;; Si l'expression est NIL
-     
+       `((LOAD (:FP ,(cdr variable)) :R0)))     
       ;; Sinon, on suppose que c'est une constante
       (t
       `((MOVE (LIT ,expr) :R0)))))
@@ -241,20 +233,12 @@
          (etiq-boucle (gensym "while"))     ; Étiquette pour le début de la boucle
          (body-code '())                    ; Code pour le corps de la boucle
          (body (rest (rest (rest expr)))))  ; Corps de la boucle (après le "while")
-
-    ;; Compilation du corps de la boucle
-    (loop while body do
-      (setq body-code (append body-code (compilation (car body) param-env local-var-env)))
-      (setq body (cdr body))
-    )
-
-    ;; Combinaison de tout le code
     (append 
      `((LABEL ,etiq-boucle))   ; Étiquette du début de la boucle
      (compilation (third expr) param-env local-var-env) ; Compilation de la condition
-     '((CMP :R0 (LIT 0)))     ; Comparaison de la condition avec 0 cmp (10) 0
+     '((CMP :R0 (LIT 0)))     ; Comparaison de la condition avec 0
      `((JEQ ,etiq-fin))       ; Sortie si la condition est fausse
-     body-code                ; Corps de la boucle
+     (compile-progn body param-env local-var-env); Corps de la boucle
      `((JMP ,etiq-boucle))    ; Retour au début de la boucle
      `((LABEL ,etiq-fin))     ; Étiquette de fin de la boucle
      )
@@ -263,20 +247,20 @@
 (defun compile-op (expr param-env local-var-env)
   ;"Compile une opération de la forme (op expr1 expr2) où op est parmi {+,-,*,/}"
   (let ((first-expr (first expr)))
-  (append 
-		(compilation (second expr) param-env local-var-env);Compile expr1 et met le résultat dans R0
-    '((PUSH :R0));On empile R0
-    (compilation (third expr) param-env local-var-env);Compile expr2 et met le résultat dans R0
-    '((PUSH :R0))
-		'((POP :R1));On récupère le résultat des nos 2 expressions compilées
-		'((POP :R0))
-    ;Cas sur l'opérateur arithmétique
-		(cond ((eql first-expr '+) '((ADD :R1 :R0)))
-		  ((eql first-expr '-) '((SUB :R1 :R0)))
-		  ((eql first-expr '*) '((MUL :R1 :R0)))
-      ((eql first-expr '/) '((DIV :R1 :R0)))
-      )
-  )
+    (append 
+      (compilation (second expr) param-env local-var-env);Compile expr1 et met le résultat dans R0
+      '((PUSH :R0));On empile R0
+      (compilation (third expr) param-env local-var-env);Compile expr2 et met le résultat dans R0
+      '((PUSH :R0))
+      '((POP :R1));On récupère le résultat des nos 2 expressions compilées
+      '((POP :R0))
+      ;Cas sur l'opérateur arithmétique
+      (cond ((eql first-expr '+) '((ADD :R1 :R0)))
+        ((eql first-expr '-) '((SUB :R1 :R0)))
+        ((eql first-expr '*) '((MUL :R1 :R0)))
+        ((eql first-expr '/) '((DIV :R1 :R0)))
+        )
+    )
   )
 )
 (defun compile-comp (expr param-env local-var-env)
@@ -302,7 +286,8 @@
         )
         ;Cas où la condition s'avère fausse, aucun saut effectué par les J
         '((MOVE (LIT 0) :R0))
-        `((LABEL ,etiq-fin)))
+        `((LABEL ,etiq-fin))
+    )
   )
 )
 (defun compile-if (expr param-env local-var-env)
@@ -310,14 +295,14 @@
   (let ((etiq-else (gensym "else"))
 	      (etiq-endif (gensym "endif")))
     (append
-    (compilation (second expr) param-env local-var-env);Compilation de la condition du if->met le résultat dans :R0
-    `((CMP :R0 (LIT 0)))
-    `((JEQ ,etiq-else));Condition fausse, JMP au sinon, ou condition vrai, on continue 
-    (compilation (third expr) param-env local-var-env) ;Compiler le alors
-    `((JMP ,etiq-endif));Sauter par dessus le sinon
-    `((LABEL ,etiq-else))
-    (compilation (fourth expr) param-env local-var-env);Compiler le sinon
-    `((LABEL ,etiq-endif))
+      (compilation (second expr) param-env local-var-env);Compilation de la condition du if->met le résultat dans :R0
+      `((CMP :R0 (LIT 0)))
+      `((JEQ ,etiq-else));Condition fausse, JMP au sinon, ou condition vrai, on continue 
+      (compilation (third expr) param-env local-var-env) ;Compiler le alors
+      `((JMP ,etiq-endif));Sauter par dessus le sinon
+      `((LABEL ,etiq-else))
+      (compilation (fourth expr) param-env local-var-env);Compiler le sinon
+      `((LABEL ,etiq-endif))
     )
   )
 )

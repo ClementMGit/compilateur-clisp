@@ -10,13 +10,16 @@
 (defun test-comp-comp ()
   (make-vm NIL 'vm 8000)
   (compile-fichier "./../compiler/compiler.lisp" "compiler.asm")
-  (vm-load-file "compiler.asm")
-  (vm-load (compilation '(progn (defun fibo (n) (if (= 0 n) 0 (if (= 1 n) 1 (+ (fibo (- n 1)) (fibo (- n 2))))))(fibo 10)) '() '()))
+  (vm-load-file "compiler.asm") ; compilation du compilo
+  ;compilation d'un appel à compilation pour pouvoir utiliser le compilo compilé
+  (vm-load (compilation '(compilation '(defun fibo (n) (if (= 0 n) 0 (if (= 1 n) 1 (+ (fibo (- n 1)) (fibo (- n 2)))))) '() '()) '() '()))
+  (vm-exec)
+  (vm-load (get 'vm :R0));load fibo compilée par le compilo compilé
+  (vm-load (compilation '(compilation '(fibo 10) '() '()) '() '()));
+  (vm-exec)
+  (vm-load (get 'vm :R0));load appel de fibo compilée par le compilo compilé
   (vm-exec)
   (vm-print);55 dans R0
-  (vm-load (compilation '(fibo 9) '() '()))
-  (vm-exec)
-  (vm-print);34 dans R0
 )
 
 (defun run-comp-tests (&optional (run-all NIL))
@@ -74,7 +77,7 @@
 
 )
 (defun test-letstar ()
-  (comp-test '(progn (defun add (x) (let* ((a 5) (b (+ a 6))) (+ a b))) (add 10)) 16 #'=)
+  (comp-test '(progn (defun add (x) (let* ((a 5) (b (+ a 6))) (+ a b) (- b a))) (add 10)) 6 #'=)
 )
 (defun test-and-or ()
   (comp-test '(and (= 1 1) (= 2 2)) 1 #'=)
@@ -190,7 +193,7 @@
   "Fonction générique pour exécuter un cas de test unitaire de code assembleur avec une VM"
   (format t "~%Test d'exécution de '~A'~%" code)
   (make-vm NIL 'vm 500) ; VM sans affichage mémoire initial
-  (vm-load code)
+  (vm-load code NIL)
   (setf (get 'vm :R0) 1 (get 'vm :R1) 2) ; Initialisation de R0 à 1 et R2 à 2
   (funcall todobefore)
   (vm-exec)
@@ -280,7 +283,7 @@
 )
 (defun test-exec-jsr ()
   ;Test que la valeur de retour est bien mise sur la pile
-  (vm-test '((JSR label1)(MOVE (LIT 2) :R0)(LABEL label1)) 251 #'= (lambda () ()) (lambda () (get-from-vm-mem 'vm (- (get 'vm :SP) 1))))
+  (vm-test '((JSR label1)(MOVE (LIT 2) :R0)(LABEL label1)) 151 #'= (lambda () ()) (lambda () (get-from-vm-mem 'vm (- (get 'vm :SP) 1))))
   ;Test que le saut s'effectue bien
   (vm-test '((JSR label1)(MOVE (LIT 2) :R0)(LABEL label1)) 1 #'=)
 
