@@ -11,12 +11,9 @@
   (compile-fichier "./../compiler/compiler.lisp" "compiler.asm"); compilation du compilo
   (vm-load-file "compiler.asm") 
   ;compilation d'un appel à compilation pour pouvoir utiliser le compilo compilé
-  (vm-load (compilation '(compilation '(defun fibo (n) (if (= 0 n) 0 (if (= 1 n) 1 (+ (fibo (- n 1)) (fibo (- n 2)))))) '() '()) '() '()))
-  (vm-exec)
-  (vm-load (get 'vm :R0));load la définition de fibo compilée par le compilo compilé
-  (vm-load (compilation '(compilation '(fibo 10) '() '()) '() '()));
-  (vm-exec)
-  (vm-load (get 'vm :R0));load appel de fibo compilée par le compilo compilé
+  (vm-load (compilation '(compilation '((defun fibo (n) (if (= 0 n) 0 (if (= 1 n) 1 (+ (fibo (- n 1)) (fibo (- n 2))))))(fibo 10)) '() '()) '() '()))
+  (vm-exec);->code asm de fibo dans R0
+  (vm-load (get 'vm :R0));load appel et définiton de fibo compilée par le compilo compilé
   (vm-exec)
   (vm-print);55 dans R0
   (if (= (get 'vm :R0) 55)
